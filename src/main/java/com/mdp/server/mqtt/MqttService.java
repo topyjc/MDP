@@ -95,38 +95,15 @@ public class MqttService {
         }
     }
 
-    public void publish(String topic, String payload) {
-        try {
-            if (client == null || !client.isConnected()) {
-                throw new IllegalStateException("MQTT client is not connected");
-            }
-
-            MqttMessage message = new MqttMessage(payload.getBytes(StandardCharsets.UTF_8));
-            message.setQos(mqtt.getQos());
-            message.setRetained(false);
-
-            client.publish(topic, message).waitForCompletion();
-
-            System.out.println("[MQTT] published -> topic=" + topic + ", payload=" + payload);
-
-        } catch (MqttException e) {
-            throw new RuntimeException("MQTT publish 실패", e);
-        }
-    }
-
     @PreDestroy
     public void disconnect() {
         try {
             if (client != null && client.isConnected()) {
                 client.disconnect().waitForCompletion();
             }
-
             if (client != null) {
                 client.close();
             }
-
-            System.out.println("[MQTT] disconnected");
-
         } catch (MqttException e) {
             System.out.println("[MQTT] disconnect error -> " + e.getMessage());
         }
