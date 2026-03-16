@@ -1,4 +1,4 @@
 package com.mdp.server.config;
 
-public class DB {
+public class Db {
 }
