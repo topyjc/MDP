@@ -8,12 +8,13 @@ import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 @Service
 public class MqttService {
 
     private final Mqtt mqtt;
-    private MqttAsyncClient client;
+    private MqttClient client;
 
     public MqttService(Mqtt mqtt) {
         this.mqtt = mqtt;
@@ -22,7 +23,13 @@ public class MqttService {
     @PostConstruct
     public void connect() {
         try {
-            client = new MqttAsyncClient(
+            System.out.println("[MQTT] connect() started");
+            System.out.println("[MQTT] brokerUrl = " + mqtt.getBrokerUrl());
+            System.out.println("[MQTT] clientId = " + mqtt.getClientId());
+            System.out.println("[MQTT] qos = " + mqtt.getQos());
+            System.out.println("[MQTT] topics = " + mqtt.getTopics());
+
+            client = new MqttClient(
                     mqtt.getBrokerUrl(),
                     mqtt.getClientId(),
                     new MemoryPersistence()
@@ -30,7 +37,7 @@ public class MqttService {
 
             MqttConnectOptions options = new MqttConnectOptions();
             options.setAutomaticReconnect(true);
-            options.setCleanSession(false);
+            options.setCleanSession(true);
             options.setKeepAliveInterval(60);
             options.setConnectionTimeout(10);
 
@@ -42,13 +49,7 @@ public class MqttService {
                 options.setPassword(mqtt.getPassword().toCharArray());
             }
 
-            client.setCallback(new MqttCallbackExtended() {
-                @Override
-                public void connectComplete(boolean reconnect, String serverURI) {
-                    System.out.println("[MQTT] connected -> " + serverURI + " / reconnect=" + reconnect);
-                    subscribeTopics();
-                }
-
+            client.setCallback(new MqttCallback() {
                 @Override
                 public void connectionLost(Throwable cause) {
                     System.out.println("[MQTT] connection lost -> " +
@@ -58,7 +59,6 @@ public class MqttService {
                 @Override
                 public void messageArrived(String topic, MqttMessage message) {
                     String payload = new String(message.getPayload(), StandardCharsets.UTF_8);
-
                     System.out.println("========== MQTT MESSAGE ==========");
                     System.out.println("topic   : " + topic);
                     System.out.println("payload : " + payload);
@@ -71,27 +71,25 @@ public class MqttService {
                 }
             });
 
-            client.connect(options).waitForCompletion();
-            System.out.println("[MQTT] connect success");
+            client.connect(options);
+            System.out.println("[MQTT] connected -> " + client.isConnected());
 
-        } catch (MqttException e) {
-            throw new RuntimeException("MQTT 연결 실패", e);
-        }
-    }
+            List<String> topics = mqtt.getTopics();
 
-    private void subscribeTopics() {
-        try {
-            if (client == null || !client.isConnected()) {
+            if (topics == null || topics.isEmpty()) {
+                System.out.println("[MQTT] topics is empty");
                 return;
             }
 
-            for (String topic : mqtt.getTopics()) {
-                client.subscribe(topic, mqtt.getQos()).waitForCompletion();
+            for (String topic : topics) {
+                System.out.println("[MQTT] subscribing -> " + topic);
+                client.subscribe(topic, mqtt.getQos());
                 System.out.println("[MQTT] subscribed -> " + topic);
             }
 
-        } catch (MqttException e) {
-            System.out.println("[MQTT] subscribe error -> " + e.getMessage());
+        } catch (Exception e) {
+            System.out.println("[MQTT] connect failed -> " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
@@ -99,12 +97,12 @@ public class MqttService {
     public void disconnect() {
         try {
             if (client != null && client.isConnected()) {
-                client.disconnect().waitForCompletion();
+                client.disconnect();
             }
             if (client != null) {
                 client.close();
             }
-        } catch (MqttException e) {
+        } catch (Exception e) {
             System.out.println("[MQTT] disconnect error -> " + e.getMessage());
         }
     }
