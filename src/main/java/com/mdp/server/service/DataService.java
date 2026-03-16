@@ -1,15 +1,15 @@
 package com.mdp.server.service;
 
-import com.mdp.server.client.DbClient;
+import com.mdp.server.client.DbServerClient;
 import com.mdp.server.dto.DataDto;
 import org.springframework.stereotype.Service;
 
 @Service
 public class DataService {
 
-    private final DbClient dbServerClient;
+    private final DbServerClient dbServerClient;
 
-    public DataService(DbClient dbServerClient) {
+    public DataService(DbServerClient dbServerClient) {
         this.dbServerClient = dbServerClient;
     }
 
