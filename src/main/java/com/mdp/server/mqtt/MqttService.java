@@ -1,109 +1,84 @@
 package com.mdp.server.mqtt;
 
-import com.mdp.server.config.Mqtt;
-import jakarta.annotation.PostConstruct;
-import jakarta.annotation.PreDestroy;
 import org.eclipse.paho.client.mqttv3.*;
-import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-
-import java.nio.charset.StandardCharsets;
-import java.util.List;
 
 @Service
 public class MqttService {
 
-    private final Mqtt mqtt;
+    @Value("${mqtt.broker-url}")
+    private String brokerUrl;
+
+    @Value("${mqtt.client-id}")
+    private String clientId;
+
+    @Value("${mqtt.qos:1}")
+    private int qos;
+
+    @Value("${mqtt.topics}")
+    private String topic;
+
+    @Value("${mqtt.username:}")
+    private String username;
+
+    @Value("${mqtt.password:}")
+    private String password;
+
     private MqttClient client;
 
-    public MqttService(Mqtt mqtt) {
-        this.mqtt = mqtt;
-    }
-
-    @PostConstruct
     public void connect() {
         try {
             System.out.println("[MQTT] connect() started");
-            System.out.println("[MQTT] brokerUrl = " + mqtt.getBrokerUrl());
-            System.out.println("[MQTT] clientId = " + mqtt.getClientId());
-            System.out.println("[MQTT] qos = " + mqtt.getQos());
-            System.out.println("[MQTT] topics = " + mqtt.getTopics());
+            System.out.println("[MQTT] brokerUrl = " + brokerUrl);
+            System.out.println("[MQTT] clientId = " + clientId);
+            System.out.println("[MQTT] qos = " + qos);
+            System.out.println("[MQTT] topic = " + topic);
 
-            client = new MqttClient(
-                    mqtt.getBrokerUrl(),
-                    mqtt.getClientId(),
-                    new MemoryPersistence()
-            );
+            client = new MqttClient(brokerUrl, clientId);
 
             MqttConnectOptions options = new MqttConnectOptions();
             options.setAutomaticReconnect(true);
             options.setCleanSession(true);
-            options.setKeepAliveInterval(60);
-            options.setConnectionTimeout(10);
 
-            if (mqtt.getUsername() != null && !mqtt.getUsername().isBlank()) {
-                options.setUserName(mqtt.getUsername());
+            if (username != null && !username.isBlank()) {
+                options.setUserName(username);
             }
-
-            if (mqtt.getPassword() != null && !mqtt.getPassword().isBlank()) {
-                options.setPassword(mqtt.getPassword().toCharArray());
+            if (password != null && !password.isBlank()) {
+                options.setPassword(password.toCharArray());
             }
 
             client.setCallback(new MqttCallback() {
                 @Override
                 public void connectionLost(Throwable cause) {
-                    System.out.println("[MQTT] connection lost -> " +
-                            (cause != null ? cause.getMessage() : "unknown"));
+                    System.out.println("[MQTT] connection lost: " + cause);
                 }
 
                 @Override
                 public void messageArrived(String topic, MqttMessage message) {
-                    String payload = new String(message.getPayload(), StandardCharsets.UTF_8);
-                    System.out.println("========== MQTT MESSAGE ==========");
-                    System.out.println("topic   : " + topic);
-                    System.out.println("payload : " + payload);
-                    System.out.println("qos     : " + message.getQos());
-                    System.out.println("==================================");
+                    String payload = new String(message.getPayload());
+                    System.out.println("[MQTT] ===== MESSAGE ARRIVED =====");
+                    System.out.println("[MQTT] received topic = " + topic);
+                    System.out.println("[MQTT] payload = " + payload);
+                    System.out.println("[MQTT] qos = " + message.getQos());
+                    System.out.println("[MQTT] retained = " + message.isRetained());
                 }
 
                 @Override
                 public void deliveryComplete(IMqttDeliveryToken token) {
+                    System.out.println("[MQTT] deliveryComplete called");
                 }
             });
 
             client.connect(options);
-            System.out.println("[MQTT] connected -> " + client.isConnected());
+            System.out.println("[MQTT] connected = " + client.isConnected());
 
-            List<String> topics = mqtt.getTopics();
-
-            if (topics == null || topics.isEmpty()) {
-                System.out.println("[MQTT] topics is empty");
-                return;
-            }
-
-            for (String topic : topics) {
-                System.out.println("[MQTT] subscribing -> " + topic);
-                client.subscribe(topic, mqtt.getQos());
-                System.out.println("[MQTT] subscribed -> " + topic);
-            }
+            client.subscribe(topic, qos);
+            System.out.println("[MQTT] subscribed to " + topic);
 
         } catch (Exception e) {
             System.out.println("[MQTT] connect failed -> " + e.getMessage());
             e.printStackTrace();
-        }
-    }
-
-    @PreDestroy
-    public void disconnect() {
-        try {
-            if (client != null && client.isConnected()) {
-                client.disconnect();
-            }
-            if (client != null) {
-                client.close();
-            }
-        } catch (Exception e) {
-            System.out.println("[MQTT] disconnect error -> " + e.getMessage());
         }
     }
 }

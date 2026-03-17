@@ -1,4 +1,4 @@
-package com.mdp.server;
+package com.mdp.server.client;
 
 public class AppClient {
 }
