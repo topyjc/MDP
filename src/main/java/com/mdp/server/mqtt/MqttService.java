@@ -6,6 +6,8 @@ import org.eclipse.paho.client.mqttv3.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
+
 @Service
 public class MqttService {
 
@@ -65,17 +67,18 @@ public class MqttService {
 
                 @Override
                 public void messageArrived(String receivedTopic, MqttMessage message) {
-                    String payload = new String(message.getPayload());
-
-                    System.out.println("[MQTT] ===== MESSAGE ARRIVED =====");
-                    System.out.println("[MQTT] received topic = " + receivedTopic);
-                    System.out.println("[MQTT] payload = " + payload);
-                    System.out.println("[MQTT] qos = " + message.getQos());
-                    System.out.println("[MQTT] retained = " + message.isRetained());
-
                     try {
+                        String payload = new String(message.getPayload(), StandardCharsets.UTF_8);
+
+                        System.out.println("[MQTT] ===== MESSAGE ARRIVED =====");
+                        System.out.println("[MQTT] received topic = " + receivedTopic);
+                        System.out.println("[MQTT] payload = " + payload);
+                        System.out.println("[MQTT] qos = " + message.getQos());
+                        System.out.println("[MQTT] retained = " + message.isRetained());
+
                         DataDto data = mapToDataDto(receivedTopic, payload);
                         dataService.processData(data);
+
                     } catch (Exception e) {
                         System.out.println("[MQTT] DataDto 매핑/처리 실패");
                         e.printStackTrace();
@@ -108,10 +111,14 @@ public class MqttService {
         }
 
         DataDto data = new DataDto();
+
+        // 현재 프로젝트 구조 기준
+        // topic 예시: mdp/pi/rpi-01/sensor/temperature
         data.setProject(parts[0]);      // mdp
         data.setComponent(parts[4]);    // temperature
         data.setValue(parsePayloadValue(payload));
 
+        // timestamp는 payload에 없으니 DataService에서 자동 세팅
         return data;
     }
 
