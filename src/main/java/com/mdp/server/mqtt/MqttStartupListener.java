@@ -13,8 +13,12 @@ public class MqttStartupListener {
         this.mqttService = mqttService;
     }
 
+    /**
+     * Spring Boot 기동이 끝난 뒤 MQTT 연결 시작
+     */
     @EventListener(ApplicationReadyEvent.class)
     public void onReady() {
+        System.out.println("[MQTT] ApplicationReadyEvent fired");
         mqttService.connect();
     }
 }
