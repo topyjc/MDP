@@ -1,5 +1,7 @@
 package com.mdp.server.mqtt;
 
+import com.mdp.server.dto.DataDto;
+import com.mdp.server.service.DataService;
 import org.eclipse.paho.client.mqttv3.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -25,7 +27,13 @@ public class MqttService {
     @Value("${mqtt.password:}")
     private String password;
 
+    private final DataService dataService;
+
     private MqttClient client;
+
+    public MqttService(DataService dataService) {
+        this.dataService = dataService;
+    }
 
     public void connect() {
         try {
@@ -44,6 +52,7 @@ public class MqttService {
             if (username != null && !username.isBlank()) {
                 options.setUserName(username);
             }
+
             if (password != null && !password.isBlank()) {
                 options.setPassword(password.toCharArray());
             }
@@ -55,13 +64,22 @@ public class MqttService {
                 }
 
                 @Override
-                public void messageArrived(String topic, MqttMessage message) {
+                public void messageArrived(String receivedTopic, MqttMessage message) {
                     String payload = new String(message.getPayload());
+
                     System.out.println("[MQTT] ===== MESSAGE ARRIVED =====");
-                    System.out.println("[MQTT] received topic = " + topic);
+                    System.out.println("[MQTT] received topic = " + receivedTopic);
                     System.out.println("[MQTT] payload = " + payload);
                     System.out.println("[MQTT] qos = " + message.getQos());
                     System.out.println("[MQTT] retained = " + message.isRetained());
+
+                    try {
+                        DataDto data = mapToDataDto(receivedTopic, payload);
+                        dataService.processData(data);
+                    } catch (Exception e) {
+                        System.out.println("[MQTT] DataDto 매핑/처리 실패");
+                        e.printStackTrace();
+                    }
                 }
 
                 @Override
@@ -79,6 +97,34 @@ public class MqttService {
         } catch (Exception e) {
             System.out.println("[MQTT] connect failed -> " + e.getMessage());
             e.printStackTrace();
+        }
+    }
+
+    private DataDto mapToDataDto(String receivedTopic, String payload) {
+        String[] parts = receivedTopic.split("/");
+
+        if (parts.length < 5) {
+            throw new IllegalArgumentException("토픽 형식이 예상과 다름: " + receivedTopic);
+        }
+
+        DataDto data = new DataDto();
+        data.setProject(parts[0]);      // mdp
+        data.setComponent(parts[4]);    // temperature
+        data.setValue(parsePayloadValue(payload));
+
+        return data;
+    }
+
+    private Object parsePayloadValue(String payload) {
+        String trimmed = payload.trim();
+
+        try {
+            if (trimmed.contains(".")) {
+                return Double.parseDouble(trimmed);
+            }
+            return Long.parseLong(trimmed);
+        } catch (NumberFormatException e) {
+            return trimmed;
         }
     }
 }
