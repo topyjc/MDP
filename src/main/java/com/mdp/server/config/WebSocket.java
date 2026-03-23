@@ -12,7 +12,7 @@ public class WebSocket implements WebSocketConfigurer {
 
     private final SensorWebSocketHandler sensorWebSocketHandler;
 
-    public WebSocketConfig(SensorWebSocketHandler sensorWebSocketHandler) {
+    public WebSocket(SensorWebSocketHandler sensorWebSocketHandler) {
         this.sensorWebSocketHandler = sensorWebSocketHandler;
     }
 
