@@ -1,6 +1,5 @@
 package com.mdp.server.websocket;
 
-import com.mdp.server.websocket.dto.SensorMessage;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
 

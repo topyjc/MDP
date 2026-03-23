@@ -1,9 +1,9 @@
 package com.mdp.server.mqtt;
 
 import com.mdp.server.dto.DataDto;
+import com.mdp.server.dto.SensorMessageDto;
 import com.mdp.server.service.DataService;
-import com.mdp.server.websocket.WebSocketPublisher;
-import com.mdp.server.websocket.dto.SensorMessage;
+import com.mdp.server.websocket.SensorWebSocketHandler;
 import org.eclipse.paho.client.mqttv3.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -32,17 +32,19 @@ public class MqttService {
     private String password;
 
     private final DataService dataService;
-    private final WebSocketPublisher webSocketPublisher;
+    private final SensorWebSocketHandler sensorWebSocketHandler;
 
     private MqttClient client;
 
-    public MqttService(DataService dataService, WebSocketPublisher webSocketPublisher) {
+    public MqttService(DataService dataService, SensorWebSocketHandler sensorWebSocketHandler) {
         this.dataService = dataService;
-        this.webSocketPublisher = webSocketPublisher;
+        this.sensorWebSocketHandler = sensorWebSocketHandler;
     }
 
     public void connect() {
         try {
+            System.out.println("[MQTT] connect() started");
+
             client = new MqttClient(brokerUrl, clientId);
 
             MqttConnectOptions options = new MqttConnectOptions();
@@ -52,6 +54,7 @@ public class MqttService {
             if (username != null && !username.isBlank()) {
                 options.setUserName(username);
             }
+
             if (password != null && !password.isBlank()) {
                 options.setPassword(password.toCharArray());
             }
@@ -67,17 +70,25 @@ public class MqttService {
                     try {
                         String payload = new String(message.getPayload(), StandardCharsets.UTF_8);
 
+                        System.out.println("[MQTT] ===== MESSAGE ARRIVED =====");
+                        System.out.println("[MQTT] received topic = " + receivedTopic);
+                        System.out.println("[MQTT] payload = " + payload);
+
                         DataDto data = mapToDataDto(receivedTopic, payload);
                         dataService.processData(data);
 
-                        SensorMessage wsMessage = new SensorMessage(
+                        long timestamp = data.getTimestamp() == 0
+                                ? System.currentTimeMillis()
+                                : data.getTimestamp();
+
+                        SensorMessageDto wsMessage = new SensorMessageDto(
                                 data.getProject(),
                                 data.getComponent(),
                                 data.getValue(),
-                                data.getTimestamp() == 0 ? System.currentTimeMillis() : data.getTimestamp()
+                                timestamp
                         );
 
-                        webSocketPublisher.publishSensorData(wsMessage);
+                        sensorWebSocketHandler.broadcast(wsMessage);
 
                     } catch (Exception e) {
                         System.out.println("[MQTT] 처리 실패");
@@ -87,11 +98,15 @@ public class MqttService {
 
                 @Override
                 public void deliveryComplete(IMqttDeliveryToken token) {
+                    System.out.println("[MQTT] deliveryComplete called");
                 }
             });
 
             client.connect(options);
+            System.out.println("[MQTT] connected = " + client.isConnected());
+
             client.subscribe(topic, qos);
+            System.out.println("[MQTT] subscribed to " + topic);
 
         } catch (Exception e) {
             System.out.println("[MQTT] connect failed -> " + e.getMessage());
@@ -110,6 +125,7 @@ public class MqttService {
         data.setProject(parts[0]);
         data.setComponent(parts[4]);
         data.setValue(parsePayloadValue(payload));
+
         return data;
     }
 

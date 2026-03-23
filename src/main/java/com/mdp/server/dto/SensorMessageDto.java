@@ -1,16 +1,16 @@
-package com.mdp.server.websocket.dto;
+package com.mdp.server.dto;
 
-public class SensorMessage {
+public class SensorMessageDto {
 
     private String project;
     private String component;
     private Object value;
     private long timestamp;
 
-    public SensorMessage() {
+    public SensorMessageDto() {
     }
 
-    public SensorMessage(String project, String component, Object value, long timestamp) {
+    public SensorMessageDto(String project, String component, Object value, long timestamp) {
         this.project = project;
         this.component = component;
         this.value = value;

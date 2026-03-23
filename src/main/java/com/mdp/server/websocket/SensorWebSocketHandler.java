@@ -1,5 +1,7 @@
 package com.mdp.server.websocket;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mdp.server.dto.SensorMessageDto;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
@@ -14,6 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class SensorWebSocketHandler extends TextWebSocketHandler {
 
     private final Set<WebSocketSession> sessions = ConcurrentHashMap.newKeySet();
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
@@ -23,7 +26,6 @@ public class SensorWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) {
-        // 지금은 클라이언트 -> 서버 메시지 처리를 안 써도 되므로 로그만 남김
         System.out.println("[WS] received from client: " + message.getPayload());
     }
 
@@ -33,16 +35,18 @@ public class SensorWebSocketHandler extends TextWebSocketHandler {
         System.out.println("[WS] disconnected: " + session.getId());
     }
 
-    public void broadcast(String payload) {
-        for (WebSocketSession session : sessions) {
-            if (session.isOpen()) {
-                try {
-                    session.sendMessage(new TextMessage(payload));
-                } catch (IOException e) {
-                    System.out.println("[WS] send failed: " + session.getId());
-                    e.printStackTrace();
+    public void broadcast(SensorMessageDto messageDto) {
+        try {
+            String json = objectMapper.writeValueAsString(messageDto);
+
+            for (WebSocketSession session : sessions) {
+                if (session.isOpen()) {
+                    session.sendMessage(new TextMessage(json));
                 }
             }
+        } catch (IOException e) {
+            System.out.println("[WS] broadcast failed");
+            e.printStackTrace();
         }
     }
 }
