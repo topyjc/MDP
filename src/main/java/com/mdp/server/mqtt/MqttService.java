@@ -2,8 +2,9 @@ package com.mdp.server.mqtt;
 
 import com.mdp.server.dto.DataDto;
 import com.mdp.server.dto.SensorMessage;
+import com.mdp.server.dto.SensorMessage;
 import com.mdp.server.service.DataService;
-import com.mdp.server.websocket.SensorWebSocketHandler;
+import com.mdp.server.websocket.WebSocketPublisher;
 import org.eclipse.paho.client.mqttv3.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -32,18 +33,22 @@ public class MqttService {
     private String password;
 
     private final DataService dataService;
-    private final SensorWebSocketHandler sensorWebSocketHandler;
+    private final WebSocketPublisher webSocketPublisher;
 
     private MqttClient client;
 
-    public MqttService(DataService dataService, SensorWebSocketHandler sensorWebSocketHandler) {
+    public MqttService(DataService dataService, WebSocketPublisher webSocketPublisher) {
         this.dataService = dataService;
-        this.sensorWebSocketHandler = sensorWebSocketHandler;
+        this.webSocketPublisher = webSocketPublisher;
     }
 
     public void connect() {
         try {
             System.out.println("[MQTT] connect() started");
+            System.out.println("[MQTT] brokerUrl = " + brokerUrl);
+            System.out.println("[MQTT] clientId = " + clientId);
+            System.out.println("[MQTT] qos = " + qos);
+            System.out.println("[MQTT] topic = " + topic);
 
             client = new MqttClient(brokerUrl, clientId);
 
@@ -73,8 +78,12 @@ public class MqttService {
                         System.out.println("[MQTT] ===== MESSAGE ARRIVED =====");
                         System.out.println("[MQTT] received topic = " + receivedTopic);
                         System.out.println("[MQTT] payload = " + payload);
+                        System.out.println("[MQTT] qos = " + message.getQos());
+                        System.out.println("[MQTT] retained = " + message.isRetained());
 
                         DataDto data = mapToDataDto(receivedTopic, payload);
+
+                        // DataService에서 validate, timestamp 보정, DB 전송 수행
                         dataService.processData(data);
 
                         long timestamp = data.getTimestamp() == 0
@@ -88,10 +97,11 @@ public class MqttService {
                                 timestamp
                         );
 
-                        sensorWebSocketHandler.broadcast(wsMessage);
+                        // STOMP publish
+                        webSocketPublisher.publishSensorData(wsMessage);
 
                     } catch (Exception e) {
-                        System.out.println("[MQTT] 처리 실패");
+                        System.out.println("[MQTT] Data 처리 실패");
                         e.printStackTrace();
                     }
                 }
@@ -122,8 +132,8 @@ public class MqttService {
         }
 
         DataDto data = new DataDto();
-        data.setProject(parts[0]);
-        data.setComponent(parts[4]);
+        data.setProject(parts[0]);      // mdp
+        data.setComponent(parts[4]);    // temperature
         data.setValue(parsePayloadValue(payload));
 
         return data;
