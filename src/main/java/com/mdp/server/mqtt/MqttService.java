@@ -1,7 +1,7 @@
 package com.mdp.server.mqtt;
 
 import com.mdp.server.dto.DataDto;
-import com.mdp.server.dto.SensorMessageDto;
+import com.mdp.server.dto.SensorMessage;
 import com.mdp.server.service.DataService;
 import com.mdp.server.websocket.SensorWebSocketHandler;
 import org.eclipse.paho.client.mqttv3.*;
@@ -81,7 +81,7 @@ public class MqttService {
                                 ? System.currentTimeMillis()
                                 : data.getTimestamp();
 
-                        SensorMessageDto wsMessage = new SensorMessageDto(
+                        SensorMessage wsMessage = new SensorMessage(
                                 data.getProject(),
                                 data.getComponent(),
                                 data.getValue(),

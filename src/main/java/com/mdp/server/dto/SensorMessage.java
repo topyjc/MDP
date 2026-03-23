@@ -1,16 +1,16 @@
 package com.mdp.server.dto;
 
-public class SensorMessageDto {
+public class SensorMessage {
 
     private String project;
     private String component;
     private Object value;
     private long timestamp;
 
-    public SensorMessageDto() {
+    public SensorMessage() {
     }
 
-    public SensorMessageDto(String project, String component, Object value, long timestamp) {
+    public SensorMessage(String project, String component, Object value, long timestamp) {
         this.project = project;
         this.component = component;
         this.value = value;

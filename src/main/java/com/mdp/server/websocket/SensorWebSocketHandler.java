@@ -1,7 +1,7 @@
 package com.mdp.server.websocket;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mdp.server.dto.SensorMessageDto;
+import com.mdp.server.dto.SensorMessage;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
@@ -35,7 +35,7 @@ public class SensorWebSocketHandler extends TextWebSocketHandler {
         System.out.println("[WS] disconnected: " + session.getId());
     }
 
-    public void broadcast(SensorMessageDto messageDto) {
+    public void broadcast(SensorMessage messageDto) {
         try {
             String json = objectMapper.writeValueAsString(messageDto);
 
