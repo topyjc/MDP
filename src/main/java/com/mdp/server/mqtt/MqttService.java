@@ -2,14 +2,16 @@ package com.mdp.server.mqtt;
 
 import com.mdp.server.dto.DataDto;
 import com.mdp.server.dto.SensorMessage;
-import com.mdp.server.dto.SensorMessage;
 import com.mdp.server.service.DataService;
-import com.mdp.server.websocket.WebSocketPublisher;
+import com.mdp.server.websocket.SensorWebSocketHandler;
 import org.eclipse.paho.client.mqttv3.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Map;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 
 @Service
 public class MqttService {
@@ -33,22 +35,20 @@ public class MqttService {
     private String password;
 
     private final DataService dataService;
-    private final WebSocketPublisher webSocketPublisher;
+    private final SensorWebSocketHandler sensorWebSocketHandler;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     private MqttClient client;
 
-    public MqttService(DataService dataService, WebSocketPublisher webSocketPublisher) {
+    public MqttService(DataService dataService, SensorWebSocketHandler sensorWebSocketHandler) {
         this.dataService = dataService;
-        this.webSocketPublisher = webSocketPublisher;
+        this.sensorWebSocketHandler = sensorWebSocketHandler;
     }
 
     public void connect() {
         try {
             System.out.println("[MQTT] connect() started");
-            System.out.println("[MQTT] brokerUrl = " + brokerUrl);
-            System.out.println("[MQTT] clientId = " + clientId);
-            System.out.println("[MQTT] qos = " + qos);
-            System.out.println("[MQTT] topic = " + topic);
 
             client = new MqttClient(brokerUrl, clientId);
 
@@ -78,12 +78,8 @@ public class MqttService {
                         System.out.println("[MQTT] ===== MESSAGE ARRIVED =====");
                         System.out.println("[MQTT] received topic = " + receivedTopic);
                         System.out.println("[MQTT] payload = " + payload);
-                        System.out.println("[MQTT] qos = " + message.getQos());
-                        System.out.println("[MQTT] retained = " + message.isRetained());
 
                         DataDto data = mapToDataDto(receivedTopic, payload);
-
-                        // DataService에서 validate, timestamp 보정, DB 전송 수행
                         dataService.processData(data);
 
                         long timestamp = data.getTimestamp() == 0
@@ -91,17 +87,16 @@ public class MqttService {
                                 : data.getTimestamp();
 
                         SensorMessage wsMessage = new SensorMessage(
-                                data.getProject(),
-                                data.getComponent(),
-                                data.getValue(),
+                                data.getContent(),
+                                data.getTable_num(),
+                                data.getData(),
                                 timestamp
                         );
 
-                        // STOMP publish
-                        webSocketPublisher.publishSensorData(wsMessage);
+                        sensorWebSocketHandler.broadcast(wsMessage);
 
                     } catch (Exception e) {
-                        System.out.println("[MQTT] Data 처리 실패");
+                        System.out.println("[MQTT] 처리 실패");
                         e.printStackTrace();
                     }
                 }
@@ -125,20 +120,29 @@ public class MqttService {
     }
 
     private DataDto mapToDataDto(String receivedTopic, String payload) {
-        String[] parts = receivedTopic.split("/");
+        try {
+            Map<String, Object> jsonMap = objectMapper.readValue(payload, Map.class);
 
-        if (parts.length < 5) {
-            throw new IllegalArgumentException("토픽 형식이 예상과 다름: " + receivedTopic);
+            DataDto data = new DataDto();
+
+            data.setContent((String) jsonMap.get("content"));
+            data.setTable_num((String) jsonMap.get("table_num"));
+
+            Object ts = jsonMap.get("timestamp");
+            if (ts != null) {
+                data.setTimestamp(((Number) ts).longValue());
+            } else {
+                data.setTimestamp(System.currentTimeMillis());
+            }
+
+            data.setData((Map<String, Object>) jsonMap.get("data"));
+
+            return data;
+
+        } catch (Exception e) {
+            throw new RuntimeException("JSON 파싱 실패: " + payload, e);
         }
-
-        DataDto data = new DataDto();
-        data.setProject(parts[0]);      // mdp
-        data.setComponent(parts[4]);    // temperature
-        data.setValue(parsePayloadValue(payload));
-
-        return data;
     }
-
     private Object parsePayloadValue(String payload) {
         String trimmed = payload.trim();
 

@@ -13,7 +13,8 @@ public class WebSocketPublisher {
         this.messagingTemplate = messagingTemplate;
     }
 
-    public void publishSensorData(SensorMessage messageDto) {
-        messagingTemplate.convertAndSend("/topic/sensor", messageDto);
+    public void publishSensorData(SensorMessage message) {
+        // 모든 구독자에게 브로드캐스트
+        messagingTemplate.convertAndSend("/topic/sensor", message);
     }
 }

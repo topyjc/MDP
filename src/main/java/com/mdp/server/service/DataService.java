@@ -31,12 +31,12 @@ public class DataService {
             throw new IllegalArgumentException("data is null");
         }
 
-        if (data.getProject() == null || data.getProject().isBlank()) {
-            throw new IllegalArgumentException("project 없음");
+        if (data.getContent() == null || data.getContent().isBlank()) {
+            throw new IllegalArgumentException("content 없음");
         }
 
-        if (data.getComponent() == null || data.getComponent().isBlank()) {
-            throw new IllegalArgumentException("component 없음");
+        if (data.getTable_num() == null || data.getTable_num().isBlank()) {
+            throw new IllegalArgumentException("table_num 없음");
         }
 
     }
@@ -52,9 +52,9 @@ public class DataService {
     private void logData(DataDto data) {
 
         System.out.println("========= DEVICE DATA =========");
-        System.out.println("project   : " + data.getProject());
-        System.out.println("component : " + data.getComponent());
-        System.out.println("value     : " + data.getValue());
+        System.out.println("content   : " + data.getContent());
+        System.out.println("table_num : " + data.getTable_num());
+        System.out.println("data     : " + data.getData());
         System.out.println("timestamp : " + data.getTimestamp());
         System.out.println("================================");
 
