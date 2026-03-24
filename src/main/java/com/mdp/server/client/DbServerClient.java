@@ -10,7 +10,7 @@ public class DbServerClient {
 
     private final RestTemplate restTemplate = new RestTemplate();
 
-    private final String DB_SERVER_URL = "http://localhost:8081/data";
+    private final String DB_SERVER_URL = "http://localhost:7000/data";
 
     public void sendData(DataDto data) {
 

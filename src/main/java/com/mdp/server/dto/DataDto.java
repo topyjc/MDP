@@ -1,24 +1,25 @@
 package com.mdp.server.dto;
 
+import java.util.Map;
+
 public class DataDto {
 
-    private String project;
-    private String component;
-    private Object value;
+    private String content;
+    private String table_num;
     private long timestamp;
-
+    private Map<String, Object> data;
     // getter
 
-    public String getProject() {
-        return project;
+    public String getContent() {
+        return content;
     }
 
-    public String getComponent() {
-        return component;
+    public String getTable_num() {
+        return table_num;
     }
 
-    public Object getValue() {
-        return value;
+    public Map<String, Object> getData() {
+        return data;
     }
 
     public long getTimestamp() {
@@ -27,16 +28,16 @@ public class DataDto {
 
     // setter
 
-    public void setProject(String project) {
-        this.project = project;
+    public void setContent(String content) {
+        this.content = content;
     }
 
-    public void setComponent(String component) {
-        this.component = component;
+    public void setTable_num(String table_num) {
+        this.table_num = table_num;
     }
 
-    public void setValue(Object value) {
-        this.value = value;
+    public void setData(Map<String, Object> data) {
+        this.data = data;
     }
 
     public void setTimestamp(long timestamp) {

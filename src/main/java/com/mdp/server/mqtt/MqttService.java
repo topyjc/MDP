@@ -7,8 +7,11 @@ import com.mdp.server.websocket.SensorWebSocketHandler;
 import org.eclipse.paho.client.mqttv3.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Map;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 
 @Service
 public class MqttService {
@@ -33,6 +36,8 @@ public class MqttService {
 
     private final DataService dataService;
     private final SensorWebSocketHandler sensorWebSocketHandler;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     private MqttClient client;
 
@@ -82,9 +87,9 @@ public class MqttService {
                                 : data.getTimestamp();
 
                         SensorMessageDto wsMessage = new SensorMessageDto(
-                                data.getProject(),
-                                data.getComponent(),
-                                data.getValue(),
+                                data.getContent(),
+                                data.getTable_num(),
+                                data.getData(),
                                 timestamp
                         );
 
@@ -115,20 +120,29 @@ public class MqttService {
     }
 
     private DataDto mapToDataDto(String receivedTopic, String payload) {
-        String[] parts = receivedTopic.split("/");
+        try {
+            Map<String, Object> jsonMap = objectMapper.readValue(payload, Map.class);
 
-        if (parts.length < 5) {
-            throw new IllegalArgumentException("토픽 형식이 예상과 다름: " + receivedTopic);
+            DataDto data = new DataDto();
+
+            data.setContent((String) jsonMap.get("content"));
+            data.setTable_num((String) jsonMap.get("table_num"));
+
+            Object ts = jsonMap.get("timestamp");
+            if (ts != null) {
+                data.setTimestamp(((Number) ts).longValue());
+            } else {
+                data.setTimestamp(System.currentTimeMillis());
+            }
+
+            data.setData((Map<String, Object>) jsonMap.get("data"));
+
+            return data;
+
+        } catch (Exception e) {
+            throw new RuntimeException("JSON 파싱 실패: " + payload, e);
         }
-
-        DataDto data = new DataDto();
-        data.setProject(parts[0]);
-        data.setComponent(parts[4]);
-        data.setValue(parsePayloadValue(payload));
-
-        return data;
     }
-
     private Object parsePayloadValue(String payload) {
         String trimmed = payload.trim();
 
