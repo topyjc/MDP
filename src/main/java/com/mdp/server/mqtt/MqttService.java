@@ -128,6 +128,27 @@ public class MqttService {
         }
     }
 
+    public void publish(String topic, String payload) {
+        try {
+            // 1. 택배 상자(MqttMessage) 만들기: String 데이터를 byte 배열로 바꿔서 넣습니다.
+            MqttMessage message = new MqttMessage(payload.getBytes());
+
+            // 2. 배송 보장 수준(QoS) 설정
+            // 0: 그냥 던짐 (유실 가능성 있음)
+            // 1: 최소 한 번은 무조건 도착 보장 (제어 명령에 가장 많이 씀!)
+            // 2: 정확히 한 번만 도착 보장 (제일 느림)
+            message.setQos(1);
+
+            // 3. 해당 토픽으로 전송
+            client.publish(topic, message);
+
+            System.out.println("[MQTT 전송 성공] 목적지(Topic): " + topic + " / 내용: " + payload);
+
+        } catch (MqttException e) {
+            System.out.println("[MQTT 전송 실패] " + e.getMessage());
+        }
+    }
+
     /**
      * payload 예시
      * {

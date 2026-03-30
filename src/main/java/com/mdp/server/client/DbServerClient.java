@@ -42,7 +42,7 @@ public class DbServerClient {
     public List<DataDto> getDataFromDb(String content, String tableNum) {
         try {
             // 1. DB 서버에게 요청할 주소 만들기 (쿼리 파라미터로 조건 전달)
-            // 예: http://localhost:9090/data?content=스마트홈&table_num=1
+            // 예: http://localhost:9090/data?content=스마트홈&=table_num1
             String url = dbServerUrl + "/data?content=" + content + "&table_num=" + tableNum;
 
             // 2. RestTemplate을 사용해 GET 요청을 보내고 List<DataDto> 타입으로 응답받기
