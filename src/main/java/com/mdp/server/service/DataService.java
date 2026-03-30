@@ -4,6 +4,8 @@ import com.mdp.server.client.DbServerClient;
 import com.mdp.server.dto.DataDto;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public class DataService {
 
@@ -13,16 +15,26 @@ public class DataService {
         this.dbServerClient = dbServerClient;
     }
 
+    /**
+     * [데이터 저장 흐름]
+     * 기기(ESP32) -> MQTT 브로커 -> MqttService -> 현재 메서드 호출 -> DB 서버로 전송
+     */
     public void processData(DataDto data) {
+        validateData(data);         // 데이터 검증 (기존 코드 유지)
+        setTimestampIfEmpty(data);  // 시간값 세팅 (기존 코드 유지)
+        logData(data);              // 로그 출력 (기존 코드 유지)
 
-        validateData(data);
-
-        setTimestampIfEmpty(data);
-
-        logData(data);
-
+        // DB 서버 클라이언트를 통해 실제 데이터 전송 (POST)
         dbServerClient.sendData(data);
+    }
 
+    /**
+     * [데이터 조회 흐름]
+     * 웹/앱 -> DataController -> 현재 메서드 호출 -> DB 서버에서 가져오기
+     */
+    public List<DataDto> fetchData(String content, String tableNum) {
+        // DB 클라이언트에게 조건(작품명, 테이블번호)을 주고 찾아오라고 지시
+        return dbServerClient.getDataFromDb(content, tableNum);
     }
 
     private void validateData(DataDto data) {
