@@ -149,6 +149,7 @@ public class MqttService {
 
         DataDto data = mapToDataDto(payload);
 
+        // 기존 JSON 그대로 DB 처리
         dataService.processData(data);
 
         SensorMessage sensorMessage = new SensorMessage(

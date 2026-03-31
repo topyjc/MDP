@@ -8,7 +8,6 @@ public class DataDto {
     private String table_num;
     private long timestamp;
     private Map<String, Object> data;
-    // getter
 
     public String getContent() {
         return content;
@@ -26,8 +25,6 @@ public class DataDto {
         return timestamp;
     }
 
-    // setter
-
     public void setContent(String content) {
         this.content = content;
     }
@@ -43,5 +40,4 @@ public class DataDto {
     public void setTimestamp(long timestamp) {
         this.timestamp = timestamp;
     }
-
 }
