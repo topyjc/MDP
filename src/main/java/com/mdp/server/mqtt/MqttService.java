@@ -1,7 +1,9 @@
 package com.mdp.server.mqtt;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mdp.server.client.MediaServerClient;
 import com.mdp.server.dto.DataDto;
+import com.mdp.server.dto.MediaUploadResponse;
 import com.mdp.server.dto.SensorMessage;
 import com.mdp.server.service.DataService;
 import com.mdp.server.websocket.SensorWebSocketHandler;
@@ -39,13 +41,19 @@ public class MqttService {
 
     private final DataService dataService;
     private final SensorWebSocketHandler sensorWebSocketHandler;
+    private final MediaServerClient mediaServerClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private MqttClient client;
 
-    public MqttService(DataService dataService, SensorWebSocketHandler sensorWebSocketHandler) {
+    public MqttService(
+            DataService dataService,
+            SensorWebSocketHandler sensorWebSocketHandler,
+            MediaServerClient mediaServerClient
+    ) {
         this.dataService = dataService;
         this.sensorWebSocketHandler = sensorWebSocketHandler;
+        this.mediaServerClient = mediaServerClient;
     }
 
     public void connect() {
@@ -79,31 +87,11 @@ public class MqttService {
                 @Override
                 public void messageArrived(String receivedTopic, MqttMessage message) {
                     try {
-                        String payload = new String(message.getPayload(), StandardCharsets.UTF_8);
-
-                        System.out.println("[MQTT] ===== MESSAGE ARRIVED =====");
-                        System.out.println("[MQTT] received topic = " + receivedTopic);
-                        System.out.println("[MQTT] payload = " + payload);
-                        System.out.println("[MQTT] qos = " + message.getQos());
-                        System.out.println("[MQTT] retained = " + message.isRetained());
-
-                        // 1. MQTT payload(JSON) -> DataDto
-                        DataDto data = mapToDataDto(payload);
-
-                        // 2. DB 서버 전송 포함 내부 처리
-                        dataService.processData(data);
-
-                        // 3. WebSocket 전송용 SensorMessage 생성
-                        SensorMessage sensorMessage = new SensorMessage(
-                                data.getContent(),
-                                data.getTable_num(),
-                                data.getData(),
-                                data.getTimestamp()
-                        );
-
-                        // 4. Web/App 실시간 전송
-                        sensorWebSocketHandler.broadcast(sensorMessage);
-
+                        if (isMediaTopic(receivedTopic)) {
+                            handleImageMessage(receivedTopic, message.getPayload());
+                        } else {
+                            handleJsonMessage(receivedTopic, message);
+                        }
                     } catch (Exception e) {
                         System.out.println("[MQTT] 처리 실패");
                         e.printStackTrace();
@@ -128,38 +116,51 @@ public class MqttService {
         }
     }
 
-    public void publish(String topic, String payload) {
-        try {
-            // 1. 택배 상자(MqttMessage) 만들기: String 데이터를 byte 배열로 바꿔서 넣습니다.
-            MqttMessage message = new MqttMessage(payload.getBytes());
-
-            // 2. 배송 보장 수준(QoS) 설정
-            // 0: 그냥 던짐 (유실 가능성 있음)
-            // 1: 최소 한 번은 무조건 도착 보장 (제어 명령에 가장 많이 씀!)
-            // 2: 정확히 한 번만 도착 보장 (제일 느림)
-            message.setQos(1);
-
-            // 3. 해당 토픽으로 전송
-            client.publish(topic, message);
-
-            System.out.println("[MQTT 전송 성공] 목적지(Topic): " + topic + " / 내용: " + payload);
-
-        } catch (MqttException e) {
-            System.out.println("[MQTT 전송 실패] " + e.getMessage());
-        }
+    private boolean isMediaTopic(String receivedTopic) {
+        String[] parts = receivedTopic.split("/");
+        return parts.length >= 6 && "media".equals(parts[4]);
     }
 
-    /**
-     * payload 예시
-     * {
-     *   "content": "road",
-     *   "table_num": "1",
-     *   "timestamp": "2024-03-24 14:20:00",
-     *   "data": {
-     *     "carNo": "12가3456"
-     *   }
-     * }
-     */
+    private void handleImageMessage(String receivedTopic, byte[] imageBytes) {
+        String[] parts = receivedTopic.split("/");
+
+        String group = parts[1];
+        String fileName = parts[5];
+
+        System.out.println("[MQTT-IMAGE] group = " + group);
+        System.out.println("[MQTT-IMAGE] fileName = " + fileName);
+        System.out.println("[MQTT-IMAGE] size = " + imageBytes.length + " bytes");
+
+        MediaUploadResponse response = mediaServerClient.uploadImage(imageBytes, fileName, group);
+
+        System.out.println("[MEDIA SERVER] upload response = " + response.getMessage());
+        System.out.println("[MEDIA SERVER] saved fileName = " + response.getFileName());
+        System.out.println("[MEDIA SERVER] fileUrl = " + response.getFileUrl());
+    }
+
+    private void handleJsonMessage(String receivedTopic, MqttMessage message) {
+        String payload = new String(message.getPayload(), StandardCharsets.UTF_8);
+
+        System.out.println("[MQTT] ===== MESSAGE ARRIVED =====");
+        System.out.println("[MQTT] received topic = " + receivedTopic);
+        System.out.println("[MQTT] payload = " + payload);
+        System.out.println("[MQTT] qos = " + message.getQos());
+        System.out.println("[MQTT] retained = " + message.isRetained());
+
+        DataDto data = mapToDataDto(payload);
+
+        dataService.processData(data);
+
+        SensorMessage sensorMessage = new SensorMessage(
+                data.getContent(),
+                data.getTable_num(),
+                data.getData(),
+                data.getTimestamp()
+        );
+
+        sensorWebSocketHandler.broadcast(sensorMessage);
+    }
+
     private DataDto mapToDataDto(String payload) {
         try {
             Map<String, Object> jsonMap = objectMapper.readValue(payload, Map.class);
@@ -193,13 +194,11 @@ public class MqttService {
         if (ts instanceof String tsString) {
             String trimmed = tsString.trim();
 
-            // epoch milli 문자열 처리
             try {
                 return Long.parseLong(trimmed);
             } catch (NumberFormatException ignored) {
             }
 
-            // "yyyy-MM-dd HH:mm:ss" 형식 처리
             try {
                 DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
                 LocalDateTime localDateTime = LocalDateTime.parse(trimmed, formatter);
