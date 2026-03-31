@@ -39,25 +39,20 @@ public class DbServerClient {
      * [DB 서버에서 데이터 가져오기 - 신규 추가 기능]
      * DB 서버의 GET API를 호출하여 데이터를 List 형태로 받아옵니다.
      */
-    public List<DataDto> getDataFromDb(String content, String tableNum) {
+    // 반환 타입을 List가 아니라 그냥 DataDto 하나로 바꿉니다!
+    public DataDto getDataFromDb(String content, String tableNum) {
         try {
-            // 1. DB 서버에게 요청할 주소 만들기 (쿼리 파라미터로 조건 전달)
-            // 예: http://localhost:9090/data?content=스마트홈&=table_num1
             String url = dbServerUrl + "/data?content=" + content + "&table_num=" + tableNum;
 
-            // 2. RestTemplate을 사용해 GET 요청을 보내고 List<DataDto> 타입으로 응답받기
-            ResponseEntity<List<DataDto>> response = restTemplate.exchange(
-                    url,
-                    HttpMethod.GET,
-                    null,
-                    new ParameterizedTypeReference<List<DataDto>>() {}
-            );
+            // DB 서버에서 단일 객체 받아오기
+            DataDto responseData = restTemplate.getForObject(url, DataDto.class);
 
-            return response.getBody(); // 정상적으로 받아온 데이터 리스트 반환
+            // 포장 없이 그냥 날것 그대로 반환!
+            return responseData;
 
         } catch (Exception e) {
             System.out.println("[DB SERVER 조회 실패] " + e.getMessage());
-            return Collections.emptyList(); // 서버 통신 에러 시 프로그램이 죽지 않도록 빈 리스트 반환
+            return null; // 에러가 나거나 데이터가 없으면 깔끔하게 null 반환
         }
     }
 }
