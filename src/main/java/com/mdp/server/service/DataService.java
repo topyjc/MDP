@@ -32,7 +32,7 @@ public class DataService {
      * [데이터 조회 흐름]
      * 웹/앱 -> DataController -> 현재 메서드 호출 -> DB 서버에서 가져오기
      */
-    public List<DataDto> fetchData(String content, String tableNum) {
+    public DataDto fetchData(String content, String tableNum) {
         // DB 클라이언트에게 조건(작품명, 테이블번호)을 주고 찾아오라고 지시
         return dbServerClient.getDataFromDb(content, tableNum);
     }
