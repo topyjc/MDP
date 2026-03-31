@@ -225,4 +225,7 @@ public class MqttService {
         wrapped.put("value", rawData);
         return wrapped;
     }
+
+    public void publish(String topic, String messagePayload) {
+    }
 }
