@@ -1,12 +1,13 @@
 package com.mdp.server.mqtt;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mdp.server.client.MediaServerClient;
 import com.mdp.server.dto.DataDto;
-import com.mdp.server.dto.MediaUploadResponse;
 import com.mdp.server.dto.SensorMessage;
 import com.mdp.server.service.DataService;
 import com.mdp.server.websocket.SensorWebSocketHandler;
+import jakarta.annotation.PreDestroy;
 import org.eclipse.paho.client.mqttv3.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -15,167 +16,162 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
-public class MqttService {
-
-    @Value("${mqtt.broker-url}")
-    private String brokerUrl;
-
-    @Value("${mqtt.client-id}")
-    private String clientId;
-
-    @Value("${mqtt.qos:1}")
-    private int qos;
-
-    @Value("${mqtt.topics}")
-    private String topic;
-
-    @Value("${mqtt.username:}")
-    private String username;
-
-    @Value("${mqtt.password:}")
-    private String password;
+public class MqttService implements MqttCallback {
 
     private final DataService dataService;
     private final SensorWebSocketHandler sensorWebSocketHandler;
     private final MediaServerClient mediaServerClient;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
+
+    @Value("${mqtt.broker}")
+    private String brokerUrl;
+
+    @Value("${mqtt.client-id:mdp-main-server}")
+    private String clientId;
+
+    @Value("${mqtt.topics:mdp/#}")
+    private String subscribeTopic;
 
     private MqttClient client;
 
     public MqttService(
             DataService dataService,
             SensorWebSocketHandler sensorWebSocketHandler,
-            MediaServerClient mediaServerClient
+            MediaServerClient mediaServerClient,
+            ObjectMapper objectMapper
     ) {
         this.dataService = dataService;
         this.sensorWebSocketHandler = sensorWebSocketHandler;
         this.mediaServerClient = mediaServerClient;
+        this.objectMapper = objectMapper;
     }
 
-    public void connect() {
+    public synchronized void connect() {
         try {
-            System.out.println("[MQTT] connect() started");
-            System.out.println("[MQTT] brokerUrl = " + brokerUrl);
-            System.out.println("[MQTT] clientId = " + clientId);
-            System.out.println("[MQTT] qos = " + qos);
-            System.out.println("[MQTT] topic = " + topic);
+            if (client != null && client.isConnected()) {
+                System.out.println("[MQTT] already connected");
+                return;
+            }
 
-            client = new MqttClient(brokerUrl, clientId);
+            String resolvedClientId = clientId + "-" + UUID.randomUUID();
+            client = new MqttClient(brokerUrl, resolvedClientId);
+            client.setCallback(this);
 
             MqttConnectOptions options = new MqttConnectOptions();
             options.setAutomaticReconnect(true);
             options.setCleanSession(true);
-
-            if (username != null && !username.isBlank()) {
-                options.setUserName(username);
-            }
-
-            if (password != null && !password.isBlank()) {
-                options.setPassword(password.toCharArray());
-            }
-
-            client.setCallback(new MqttCallback() {
-                @Override
-                public void connectionLost(Throwable cause) {
-                    System.out.println("[MQTT] connection lost: " + cause);
-                }
-
-                @Override
-                public void messageArrived(String receivedTopic, MqttMessage message) {
-                    try {
-                        if (isMediaTopic(receivedTopic)) {
-                            handleImageMessage(receivedTopic, message.getPayload());
-                        } else {
-                            handleJsonMessage(receivedTopic, message);
-                        }
-                    } catch (Exception e) {
-                        System.out.println("[MQTT] 처리 실패");
-                        e.printStackTrace();
-                    }
-                }
-
-                @Override
-                public void deliveryComplete(IMqttDeliveryToken token) {
-                    System.out.println("[MQTT] deliveryComplete called");
-                }
-            });
+            options.setConnectionTimeout(10);
+            options.setKeepAliveInterval(20);
 
             client.connect(options);
-            System.out.println("[MQTT] connected = " + client.isConnected());
+            client.subscribe(subscribeTopic, 1);
 
-            client.subscribe(topic, qos);
-            System.out.println("[MQTT] subscribed to " + topic);
-
-        } catch (Exception e) {
-            System.out.println("[MQTT] connect failed -> " + e.getMessage());
+            System.out.println("[MQTT] connected to broker: " + brokerUrl);
+            System.out.println("[MQTT] subscribed topic: " + subscribeTopic);
+        } catch (MqttException e) {
+            System.out.println("[MQTT] connect failed");
             e.printStackTrace();
         }
     }
 
-    private boolean isMediaTopic(String receivedTopic) {
-        String[] parts = receivedTopic.split("/");
+    @Override
+    public void connectionLost(Throwable cause) {
+        System.out.println("[MQTT] connection lost");
+        if (cause != null) {
+            cause.printStackTrace();
+        }
+    }
+
+    @Override
+    public void messageArrived(String topic, MqttMessage mqttMessage) {
+        try {
+            byte[] payload = mqttMessage.getPayload();
+
+            System.out.println("[MQTT] topic = " + topic);
+            System.out.println("[MQTT] payload bytes = " + payload.length);
+
+            if (isMediaTopic(topic)) {
+                handleMediaMessage(topic, payload);
+            } else {
+                handleEventMessage(topic, payload);
+            }
+        } catch (Exception e) {
+            System.out.println("[MQTT] message processing failed");
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void deliveryComplete(IMqttDeliveryToken token) {
+        // subscribe consumer only, no-op
+    }
+
+    private boolean isMediaTopic(String topic) {
+        String[] parts = topic.split("/");
         return parts.length >= 6 && "media".equals(parts[4]);
     }
 
-    private void handleImageMessage(String receivedTopic, byte[] imageBytes) {
-        String[] parts = receivedTopic.split("/");
+    private void handleMediaMessage(String topic, byte[] payload) {
+        String[] parts = topic.split("/");
 
+        // mdp/{group}/{deviceType}/{deviceId}/media/{fileName}
         String group = parts[1];
         String fileName = parts[5];
 
-        System.out.println("[MQTT-IMAGE] group = " + group);
-        System.out.println("[MQTT-IMAGE] fileName = " + fileName);
-        System.out.println("[MQTT-IMAGE] size = " + imageBytes.length + " bytes");
+        System.out.println("[MQTT][MEDIA] group = " + group);
+        System.out.println("[MQTT][MEDIA] fileName = " + fileName);
 
-        MediaUploadResponse response = mediaServerClient.uploadImage(imageBytes, fileName, group);
+        String uploadedUrl = mediaServerClient.uploadImage(group, fileName, payload);
 
-        System.out.println("[MEDIA SERVER] upload response = " + response.getMessage());
-        System.out.println("[MEDIA SERVER] saved fileName = " + response.getFileName());
-        System.out.println("[MEDIA SERVER] fileUrl = " + response.getFileUrl());
+        System.out.println("[MQTT][MEDIA] uploaded to media server: " + uploadedUrl);
     }
 
-    private void handleJsonMessage(String receivedTopic, MqttMessage message) {
-        String payload = new String(message.getPayload(), StandardCharsets.UTF_8);
+    private void handleEventMessage(String topic, byte[] payload) {
+        String payloadText = new String(payload, StandardCharsets.UTF_8);
+        System.out.println("[MQTT][EVENT] payload = " + payloadText);
 
-        System.out.println("[MQTT] ===== MESSAGE ARRIVED =====");
-        System.out.println("[MQTT] received topic = " + receivedTopic);
-        System.out.println("[MQTT] payload = " + payload);
-        System.out.println("[MQTT] qos = " + message.getQos());
-        System.out.println("[MQTT] retained = " + message.isRetained());
+        DataDto dataDto = mapToDataDto(payloadText);
 
-        DataDto data = mapToDataDto(payload);
-
-        // 기존 JSON 그대로 DB 처리
-        dataService.processData(data);
+        dataService.processData(dataDto);
 
         SensorMessage sensorMessage = new SensorMessage(
-                data.getContent(),
-                data.getTable_num(),
-                data.getData(),
-                data.getTimestamp()
+                dataDto.getContent(),
+                dataDto.getTable_num(),
+                dataDto.getData(),
+                dataDto.getTimestamp()
         );
 
         sensorWebSocketHandler.broadcast(sensorMessage);
+
+        System.out.println("[MQTT][EVENT] DB save + WebSocket broadcast completed");
     }
 
-    private DataDto mapToDataDto(String payload) {
+    private DataDto mapToDataDto(String json) {
         try {
-            Map<String, Object> jsonMap = objectMapper.readValue(payload, Map.class);
+            Map<String, Object> map = objectMapper.readValue(
+                    json,
+                    new TypeReference<Map<String, Object>>() {}
+            );
 
-            DataDto data = new DataDto();
-            data.setContent(asString(jsonMap.get("content")));
-            data.setTable_num(asString(jsonMap.get("table_num")));
-            data.setTimestamp(parseTimestamp(jsonMap.get("timestamp")));
-            data.setData(parseData(jsonMap.get("data")));
+            DataDto dto = new DataDto();
+            dto.setContent(asString(map.get("content")));
+            dto.setTable_num(asString(map.get("table_num")));
+            dto.setTimestamp(parseTimestamp(map.get("timestamp")));
 
-            return data;
+            Object dataObj = map.get("data");
+            if (dataObj instanceof Map<?, ?> rawMap) {
+                dto.setData((Map<String, Object>) rawMap);
+            } else {
+                throw new IllegalArgumentException("data field must be an object");
+            }
 
+            return dto;
         } catch (Exception e) {
-            throw new RuntimeException("JSON 파싱 실패: " + payload, e);
+            throw new RuntimeException("Invalid event JSON payload: " + json, e);
         }
     }
 
@@ -183,49 +179,67 @@ public class MqttService {
         return value == null ? null : String.valueOf(value);
     }
 
-    private long parseTimestamp(Object ts) {
-        if (ts == null) {
+    private long parseTimestamp(Object raw) {
+        if (raw == null) {
             return System.currentTimeMillis();
         }
 
-        if (ts instanceof Number number) {
+        if (raw instanceof Number number) {
             return number.longValue();
         }
 
-        if (ts instanceof String tsString) {
-            String trimmed = tsString.trim();
+        if (raw instanceof String str) {
+            String trimmed = str.trim();
 
-            try {
+            if (trimmed.isEmpty()) {
+                return System.currentTimeMillis();
+            }
+
+            // 숫자 문자열
+            if (trimmed.matches("^\\d+$")) {
                 return Long.parseLong(trimmed);
-            } catch (NumberFormatException ignored) {
             }
 
-            try {
-                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-                LocalDateTime localDateTime = LocalDateTime.parse(trimmed, formatter);
-                return localDateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
-            } catch (Exception ignored) {
-            }
+            // "yyyy-MM-dd HH:mm:ss"
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            LocalDateTime ldt = LocalDateTime.parse(trimmed, formatter);
+
+            return ldt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
         }
 
         return System.currentTimeMillis();
     }
 
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> parseData(Object rawData) {
-        if (rawData == null) {
-            return new HashMap<>();
+    @PreDestroy
+    public void disconnect() {
+        try {
+            if (client != null && client.isConnected()) {
+                client.disconnect();
+                client.close();
+                System.out.println("[MQTT] disconnected");
+            }
+        } catch (MqttException e) {
+            e.printStackTrace();
         }
-
-        if (rawData instanceof Map<?, ?> map) {
-            return (Map<String, Object>) map;
-        }
-
-        Map<String, Object> wrapped = new HashMap<>();
-        wrapped.put("value", rawData);
-        return wrapped;
     }
+    public void publish(String topic, String payload) {
+        try {
+            if (client == null || !client.isConnected()) {
+                throw new IllegalStateException("MQTT client is not connected");
+            }
 
-    public void publish(String topic, String messagePayload) {
+            MqttMessage message = new MqttMessage(payload.getBytes(StandardCharsets.UTF_8));
+            message.setQos(1);
+            message.setRetained(false);
+
+            client.publish(topic, message);
+
+            System.out.println("[MQTT][PUBLISH] topic = " + topic);
+            System.out.println("[MQTT][PUBLISH] payload = " + payload);
+        } catch (Exception e) {
+            System.out.println("[MQTT][PUBLISH] failed");
+            e.printStackTrace();
+            throw new RuntimeException("MQTT publish failed", e);
+        }
     }
 }

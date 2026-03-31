@@ -1,6 +1,5 @@
 package com.mdp.server.client;
 
-import com.mdp.server.dto.MediaUploadResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.*;
@@ -12,12 +11,14 @@ import org.springframework.web.client.RestTemplate;
 @Component
 public class MediaServerClient {
 
+    @Value("${media.server.base-url}")
+    private String mediaServerBaseUrl;
+
     private final RestTemplate restTemplate = new RestTemplate();
 
-    @Value("${media.server.url}")
-    private String mediaServerUrl;
+    public String uploadImage(String group, String fileName, byte[] fileBytes) {
+        String url = mediaServerBaseUrl + "/media/upload";
 
-    public MediaUploadResponse uploadImage(byte[] fileBytes, String fileName, String group) {
         ByteArrayResource fileResource = new ByteArrayResource(fileBytes) {
             @Override
             public String getFilename() {
@@ -26,8 +27,8 @@ public class MediaServerClient {
         };
 
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-        body.add("file", fileResource);
         body.add("group", group);
+        body.add("file", fileResource);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
@@ -35,12 +36,15 @@ public class MediaServerClient {
         HttpEntity<MultiValueMap<String, Object>> requestEntity =
                 new HttpEntity<>(body, headers);
 
-        ResponseEntity<MediaUploadResponse> response = restTemplate.exchange(
-                mediaServerUrl + "/media/upload",
-                HttpMethod.POST,
+        ResponseEntity<String> response = restTemplate.postForEntity(
+                url,
                 requestEntity,
-                MediaUploadResponse.class
+                String.class
         );
+
+        if (!response.getStatusCode().is2xxSuccessful()) {
+            throw new RuntimeException("Media upload failed: " + response.getStatusCode());
+        }
 
         return response.getBody();
     }

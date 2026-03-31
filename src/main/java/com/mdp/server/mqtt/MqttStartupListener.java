@@ -1,5 +1,6 @@
 package com.mdp.server.mqtt;
 
+import com.mdp.server.mqtt.MqttService;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
@@ -15,7 +16,6 @@ public class MqttStartupListener {
 
     @EventListener(ApplicationReadyEvent.class)
     public void onReady() {
-        System.out.println("[MQTT] ApplicationReadyEvent fired");
         mqttService.connect();
     }
 }
