@@ -16,6 +16,8 @@ public class MqttStartupListener {
 
     @EventListener(ApplicationReadyEvent.class)
     public void onReady() {
+        System.out.println("### MQTT STARTUP LISTENER FIRED ###");
         mqttService.connect();
     }
+
 }

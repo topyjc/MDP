@@ -3,13 +3,13 @@ package com.mdp.server.mqtt;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mdp.server.client.MediaServerClient;
+import com.mdp.server.config.Mqtt;
 import com.mdp.server.dto.DataDto;
 import com.mdp.server.dto.SensorMessage;
 import com.mdp.server.service.DataService;
 import com.mdp.server.websocket.SensorWebSocketHandler;
 import jakarta.annotation.PreDestroy;
 import org.eclipse.paho.client.mqttv3.*;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
@@ -26,15 +26,7 @@ public class MqttService implements MqttCallback {
     private final SensorWebSocketHandler sensorWebSocketHandler;
     private final MediaServerClient mediaServerClient;
     private final ObjectMapper objectMapper;
-
-    @Value("${mqtt.broker}")
-    private String brokerUrl;
-
-    @Value("${mqtt.client-id:mdp-main-server}")
-    private String clientId;
-
-    @Value("${mqtt.topics:mdp/#}")
-    private String subscribeTopic;
+    private final Mqtt mqttConfig;
 
     private MqttClient client;
 
@@ -42,22 +34,48 @@ public class MqttService implements MqttCallback {
             DataService dataService,
             SensorWebSocketHandler sensorWebSocketHandler,
             MediaServerClient mediaServerClient,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            Mqtt mqttConfig
     ) {
         this.dataService = dataService;
         this.sensorWebSocketHandler = sensorWebSocketHandler;
         this.mediaServerClient = mediaServerClient;
         this.objectMapper = objectMapper;
+        this.mqttConfig = mqttConfig;
     }
 
     public synchronized void connect() {
+        System.out.println("### MQTT CONNECT BEGIN ###");
+        System.out.println("brokerUrl = " + mqttConfig.getBrokerUrl());
+        System.out.println("clientId = " + mqttConfig.getClientId());
+        System.out.println("topics = " + mqttConfig.getTopics());
+
+        String brokerUrl = mqttConfig.getBrokerUrl();
+        if (brokerUrl == null || brokerUrl.isBlank()) {
+            throw new IllegalStateException("MQTT broker URL is null or blank");
+        }
+
         try {
             if (client != null && client.isConnected()) {
                 System.out.println("[MQTT] already connected");
                 return;
             }
 
-            String resolvedClientId = clientId + "-" + UUID.randomUUID();
+            String baseClientId = (mqttConfig.getClientId() == null || mqttConfig.getClientId().isBlank())
+                    ? "mdp-main-server"
+                    : mqttConfig.getClientId();
+
+            String subscribeTopic = (mqttConfig.getTopics() == null || mqttConfig.getTopics().isEmpty())
+                    ? "mdp/#"
+                    : mqttConfig.getTopics().get(0);
+
+            String resolvedClientId = baseClientId + "-" + UUID.randomUUID();
+
+            System.out.println("[MQTT] preparing client");
+            System.out.println("[MQTT] baseClientId = " + baseClientId);
+            System.out.println("[MQTT] subscribeTopic = " + subscribeTopic);
+            System.out.println("[MQTT] resolvedClientId = " + resolvedClientId);
+
             client = new MqttClient(brokerUrl, resolvedClientId);
             client.setCallback(this);
 
@@ -67,22 +85,38 @@ public class MqttService implements MqttCallback {
             options.setConnectionTimeout(10);
             options.setKeepAliveInterval(20);
 
+            if (mqttConfig.getUsername() != null && !mqttConfig.getUsername().isBlank()) {
+                options.setUserName(mqttConfig.getUsername());
+            }
+            if (mqttConfig.getPassword() != null && !mqttConfig.getPassword().isBlank()) {
+                options.setPassword(mqttConfig.getPassword().toCharArray());
+            }
+
+            System.out.println("[MQTT] connecting...");
             client.connect(options);
-            client.subscribe(subscribeTopic, 1);
+
+            System.out.println("[MQTT] connect success, subscribing...");
+            client.subscribe(subscribeTopic, mqttConfig.getQos());
 
             System.out.println("[MQTT] connected to broker: " + brokerUrl);
             System.out.println("[MQTT] subscribed topic: " + subscribeTopic);
+            System.out.println("[MQTT] actual clientId: " + resolvedClientId);
+            System.out.println("[MQTT] isConnected after subscribe = " + client.isConnected());
         } catch (MqttException e) {
             System.out.println("[MQTT] connect failed");
+            System.out.println("[MQTT] brokerUrl = " + brokerUrl);
             e.printStackTrace();
         }
     }
 
     @Override
-    public void connectionLost(Throwable cause) {
+    public void connectionLost(Throwable throwable) {
         System.out.println("[MQTT] connection lost");
-        if (cause != null) {
-            cause.printStackTrace();
+        if (client != null) {
+            System.out.println("[MQTT] client.isConnected = " + client.isConnected());
+        }
+        if (throwable != null) {
+            throwable.printStackTrace();
         }
     }
 
@@ -91,7 +125,10 @@ public class MqttService implements MqttCallback {
         try {
             byte[] payload = mqttMessage.getPayload();
 
+            System.out.println("### MESSAGE ARRIVED HIT ###");
             System.out.println("[MQTT] topic = " + topic);
+            System.out.println("[MQTT] qos = " + mqttMessage.getQos());
+            System.out.println("[MQTT] retained = " + mqttMessage.isRetained());
             System.out.println("[MQTT] payload bytes = " + payload.length);
 
             if (isMediaTopic(topic)) {
@@ -104,12 +141,6 @@ public class MqttService implements MqttCallback {
             e.printStackTrace();
         }
     }
-
-    @Override
-    public void deliveryComplete(IMqttDeliveryToken token) {
-        // subscribe consumer only, no-op
-    }
-
     private boolean isMediaTopic(String topic) {
         String[] parts = topic.split("/");
         return parts.length >= 6 && "media".equals(parts[4]);
@@ -118,7 +149,6 @@ public class MqttService implements MqttCallback {
     private void handleMediaMessage(String topic, byte[] payload) {
         String[] parts = topic.split("/");
 
-        // mdp/{group}/{deviceType}/{deviceId}/media/{fileName}
         String group = parts[1];
         String fileName = parts[5];
 
@@ -149,7 +179,6 @@ public class MqttService implements MqttCallback {
 
         System.out.println("[MQTT][EVENT] DB save + WebSocket broadcast completed");
     }
-
     private DataDto mapToDataDto(String json) {
         try {
             Map<String, Object> map = objectMapper.readValue(
@@ -195,12 +224,10 @@ public class MqttService implements MqttCallback {
                 return System.currentTimeMillis();
             }
 
-            // 숫자 문자열
             if (trimmed.matches("^\\d+$")) {
                 return Long.parseLong(trimmed);
             }
 
-            // "yyyy-MM-dd HH:mm:ss"
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
             LocalDateTime ldt = LocalDateTime.parse(trimmed, formatter);
 
@@ -210,18 +237,11 @@ public class MqttService implements MqttCallback {
         return System.currentTimeMillis();
     }
 
-    @PreDestroy
-    public void disconnect() {
-        try {
-            if (client != null && client.isConnected()) {
-                client.disconnect();
-                client.close();
-                System.out.println("[MQTT] disconnected");
-            }
-        } catch (MqttException e) {
-            e.printStackTrace();
-        }
+    @Override
+    public void deliveryComplete(IMqttDeliveryToken iMqttDeliveryToken) {
+
     }
+
     public void publish(String topic, String payload) {
         try {
             if (client == null || !client.isConnected()) {
@@ -229,7 +249,7 @@ public class MqttService implements MqttCallback {
             }
 
             MqttMessage message = new MqttMessage(payload.getBytes(StandardCharsets.UTF_8));
-            message.setQos(1);
+            message.setQos(mqttConfig.getQos());
             message.setRetained(false);
 
             client.publish(topic, message);
@@ -242,4 +262,6 @@ public class MqttService implements MqttCallback {
             throw new RuntimeException("MQTT publish failed", e);
         }
     }
+
+    // 나머지 messageArrived / publish / parse 로직은 기존 그대로 유지
 }

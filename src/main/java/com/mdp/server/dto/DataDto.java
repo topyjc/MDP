@@ -40,4 +40,5 @@ public class DataDto {
     public void setTimestamp(Long timestamp) {
         this.timestamp = timestamp;
     }
+
 }

@@ -29,7 +29,7 @@ public class ControlController {
         // 2. Map으로 들어온 명령을 JSON 문자열로 변환
         String messagePayload = controlDto.getCommandAsJsonString();
 
-        // 3. MQTT로 발행 (Publish) - ESP32로 발사!
+        // 3. MQTT로 발행 (Publish)
         mqttService.publish(topic, messagePayload);
 
         // 4. 앱에게 "명령 잘 전달했어!" 라고 알려주기
