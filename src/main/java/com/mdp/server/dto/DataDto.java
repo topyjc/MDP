@@ -6,7 +6,7 @@ public class DataDto {
 
     private String content;
     private String table_num;
-    private long timestamp;
+    private Long timestamp;
     private Map<String, Object> data;
 
     public String getContent() {
@@ -21,7 +21,7 @@ public class DataDto {
         return data;
     }
 
-    public long getTimestamp() {
+    public Long getTimestamp() {
         return timestamp;
     }
 
@@ -37,7 +37,7 @@ public class DataDto {
         this.data = data;
     }
 
-    public void setTimestamp(long timestamp) {
+    public void setTimestamp(Long timestamp) {
         this.timestamp = timestamp;
     }
 }
