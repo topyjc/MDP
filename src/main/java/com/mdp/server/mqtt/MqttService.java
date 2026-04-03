@@ -121,24 +121,18 @@ public class MqttService implements MqttCallback {
     }
 
     @Override
-    public void messageArrived(String topic, MqttMessage mqttMessage) {
-        try {
-            byte[] payload = mqttMessage.getPayload();
+    public void messageArrived(String topic, MqttMessage message) throws Exception {
+        // ... (기존 로그 출력 코드들) ...
 
-            System.out.println("### MESSAGE ARRIVED HIT ###");
-            System.out.println("[MQTT] topic = " + topic);
-            System.out.println("[MQTT] qos = " + mqttMessage.getQos());
-            System.out.println("[MQTT] retained = " + mqttMessage.isRetained());
-            System.out.println("[MQTT] payload bytes = " + payload.length);
+        byte[] payload = message.getPayload();
 
-            if (isMediaTopic(topic)) {
-                handleMediaMessage(topic, payload);
-            } else {
-                handleEventMessage(topic, payload);
-            }
-        } catch (Exception e) {
-            System.out.println("[MQTT] message processing failed");
-            e.printStackTrace();
+        // 💡 여기가 핵심: 토픽 이름에 "media"가 포함되어 있으면 미디어 처리 로직으로!
+        if (topic.contains("media")) {
+            // 미디어 파일(이미지 등) HTTP 전송 로직 호출
+            handleMediaMessage(topic, payload);
+        } else {
+            // 기존의 일반 센서 JSON 데이터 처리 로직 호출
+            handleEventMessage(topic, payload);
         }
     }
     private boolean isMediaTopic(String topic) {
@@ -149,8 +143,8 @@ public class MqttService implements MqttCallback {
     private void handleMediaMessage(String topic, byte[] payload) {
         String[] parts = topic.split("/");
 
-        String group = parts[1];
-        String fileName = parts[5];
+        String group = parts[1]; // 예시:streetlight
+        String fileName = parts[3];
 
         System.out.println("[MQTT][MEDIA] group = " + group);
         System.out.println("[MQTT][MEDIA] fileName = " + fileName);
