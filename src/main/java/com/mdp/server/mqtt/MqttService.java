@@ -176,12 +176,26 @@ public class MqttService implements MqttCallback {
         System.out.println("[MQTT][MEDIA] File: " + fileName + " (" + payload.length + " bytes)");
 
         try {
-            // 3. 미디어 서버에 업로드
-            String uploadedUrl = mediaServerClient.uploadImage(teamId, fileName, payload);
-            System.out.println("[MQTT][MEDIA] 미디어 서버 저장 완료: " + uploadedUrl);
+            // 1. 미디어 서버 업로드 (현재 반환값이 JSON 문자열임)
+            String uploadResponseJson = mediaServerClient.uploadImage(teamId, fileName, payload);
+            System.out.println("[MQTT][MEDIA] 미디어 서버 응답: " + uploadResponseJson);
 
-            // 4. AI 서버에 판독 요청 (추출한 'fire' 전달)
-            String aiResult = aiServerClient.requestInference(teamId, analysisType, uploadedUrl, currentTimestamp);
+            // 2. JSON에서 fileUrl만 추출 (ObjectMapper 사용)
+            Map<String, String> responseMap = objectMapper.readValue(
+                    uploadResponseJson,
+                    new TypeReference<Map<String, String>>() {}
+            );
+            String relativeUrl = responseMap.get("fileUrl"); // "/media/files/..."
+
+            // 3. AI 서버가 접근할 수 있도록 완전한 HTTP 주소로 조립!
+            // (주의: 192.168.x.x 부분과 포트를 실제 미디어 서버 주소로 변경하세요!)
+            String mediaServerBaseUrl = "http://192.168.0.20:8090";
+            String fullImageUrl = mediaServerBaseUrl + relativeUrl;
+
+            System.out.println("[MQTT][MEDIA] AI로 보낼 최종 URL: " + fullImageUrl);
+
+            // 4. AI 서버에 판독 요청 (풀 URL을 보냅니다)
+            String aiResult = aiServerClient.requestInference(teamId, analysisType, fullImageUrl, currentTimestamp);
             System.out.println("[AI] 최종 판독 결과: " + aiResult);
 
         } catch (Exception e) {
