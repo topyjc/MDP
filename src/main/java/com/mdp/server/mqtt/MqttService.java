@@ -2,6 +2,7 @@ package com.mdp.server.mqtt;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mdp.server.client.AiServerClient;
 import com.mdp.server.client.MediaServerClient;
 import com.mdp.server.config.Mqtt;
 import com.mdp.server.dto.DataDto;
@@ -27,6 +28,7 @@ public class MqttService implements MqttCallback {
     private final MediaServerClient mediaServerClient;
     private final ObjectMapper objectMapper;
     private final Mqtt mqttConfig;
+    private final AiServerClient aiServerClient;
 
     private MqttClient client;
 
@@ -35,13 +37,15 @@ public class MqttService implements MqttCallback {
             SensorWebSocketHandler sensorWebSocketHandler,
             MediaServerClient mediaServerClient,
             ObjectMapper objectMapper,
-            Mqtt mqttConfig
+            Mqtt mqttConfig,
+            AiServerClient aiServerClient
     ) {
         this.dataService = dataService;
         this.sensorWebSocketHandler = sensorWebSocketHandler;
         this.mediaServerClient = mediaServerClient;
         this.objectMapper = objectMapper;
         this.mqttConfig = mqttConfig;
+        this.aiServerClient = aiServerClient;
     }
 
     public synchronized void connect() {
@@ -141,17 +145,49 @@ public class MqttService implements MqttCallback {
     }
 
     private void handleMediaMessage(String topic, byte[] payload) {
-        String[] parts = topic.split("/");
+        // 1. 토픽 분리 (예: mdp/streetlight/media/streetlight-fire-20260330-193015-123.jpg)
+        String[] topicParts = topic.split("/");
 
-        String group = parts[1]; // 예시:streetlight
-        String fileName = parts[3];
+        // 토픽 길이 검증 (최소 4칸은 되어야 함)
+        if (topicParts.length < 4) {
+            System.out.println("[MQTT] 잘못된 미디어 토픽 형식입니다: " + topic);
+            return;
+        }
 
-        System.out.println("[MQTT][MEDIA] group = " + group);
-        System.out.println("[MQTT][MEDIA] fileName = " + fileName);
+        String teamId = topicParts[1];       // "streetlight"
+        String dataType = topicParts[2];     // "media"
+        String fileName = topicParts[3];     // "streetlight-fire-20260330-193015-123.jpg"
 
-        String uploadedUrl = mediaServerClient.uploadImage(group, fileName, payload);
+        // 2. 파일명에서 분석 유형(analysisType) 추출
+        // 하이픈(-) 기준으로 자르기
+        String[] fileParts = fileName.split("-");
 
-        System.out.println("[MQTT][MEDIA] uploaded to media server: " + uploadedUrl);
+        // 최소 조이름과 분석유형은 있어야 하므로 검증
+        if (fileParts.length < 2) {
+            System.out.println("[MQTT] 파일명 형식이 맞지 않습니다: " + fileName);
+            return;
+        }
+
+        // 파일명의 두 번째 덩어리가 분석 유형
+        String analysisType = fileParts[1];  // "fire"
+        long currentTimestamp = System.currentTimeMillis(); // 타임스탬프는 메인 서버 시간
+
+        System.out.println("[MQTT][MEDIA] Team: " + teamId + " | Type: " + analysisType);
+        System.out.println("[MQTT][MEDIA] File: " + fileName + " (" + payload.length + " bytes)");
+
+        try {
+            // 3. 미디어 서버에 업로드
+            String uploadedUrl = mediaServerClient.uploadImage(teamId, fileName, payload);
+            System.out.println("[MQTT][MEDIA] 미디어 서버 저장 완료: " + uploadedUrl);
+
+            // 4. AI 서버에 판독 요청 (추출한 'fire' 전달)
+            String aiResult = aiServerClient.requestInference(teamId, analysisType, uploadedUrl, currentTimestamp);
+            System.out.println("[AI] 최종 판독 결과: " + aiResult);
+
+        } catch (Exception e) {
+            System.out.println("[MQTT][MEDIA] 미디어 처리 중 에러 발생: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     private void handleEventMessage(String topic, byte[] payload) {

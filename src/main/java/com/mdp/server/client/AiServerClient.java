@@ -19,37 +19,38 @@ public class AiServerClient {
     @Value("${ai.server.url}")
     private String aiServerUrl;
 
-    // AI 서버에 판독을 요청하는 메서드
-    public String requestInference(String fileUrl, String group) {
-        // 1. AI 서버로 보낼 JSON 데이터 만들기
+    public String requestInference(String teamId, String analysisType, String imageUrl, long timestamp) {
+        // 1. AI 팀이 요구한 규격대로 JSON Body 만들기
         Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put("imageUrl", fileUrl);
-        requestBody.put("group", group); // 예: "living_room_cam"
+        requestBody.put("team_id", teamId);
+        requestBody.put("analysis_type", analysisType);
+        requestBody.put("image", imageUrl);         // 실제 파일이 아닌 미디어 서버의 URL
+        requestBody.put("timestamp", timestamp);    //
 
-        // 2. 헤더 설정 (JSON으로 보낸다고 명시)
+        // 2. HTTP 헤더 설정 (JSON 타입 명시)
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
 
-        // 3. 요청 패키지 포장
+        // 3. 편지 봉투에 담기
         HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
 
         try {
-            // 4. AI 서버로 POST 요청 발사!
+            // 4. AI 서버로 POST 발사! (엔드포인트는 AI 팀과 맞춘 주소로 변경하세요 예: /api/analyze)
             ResponseEntity<Map> response = restTemplate.postForEntity(
-                    aiServerUrl + "/api/predict", // AI 팀 API 주소로 변경 필요
+                    aiServerUrl + "/api/analyze",
                     requestEntity,
                     Map.class
             );
 
-            // 5. AI 서버의 답변(예: "FIRE", "NORMAL", "INTRUDER") 꺼내기
+            // 5. AI 서버의 답변 꺼내기 (예: "FIRE", "NORMAL" 등)
             Map<String, Object> responseBody = response.getBody();
             if (responseBody != null && responseBody.containsKey("result")) {
-                return (String) responseBody.get("result");
+                return String.valueOf(responseBody.get("result"));
             }
             return "UNKNOWN";
 
         } catch (Exception e) {
-            System.out.println("[AI SERVER] 요청 실패: " + e.getMessage());
+            System.out.println("[AI SERVER] AI 분석 요청 실패: " + e.getMessage());
             return "ERROR";
         }
     }
