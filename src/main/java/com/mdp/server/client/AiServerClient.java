@@ -24,8 +24,7 @@ public class AiServerClient {
         Map<String, Object> requestBody = new HashMap<>();
         requestBody.put("team_id", teamId);
         requestBody.put("analysis_type", analysisType);
-        requestBody.put("image", imageUrl);         // 실제 파일이 아닌 미디어 서버의 URL
-        requestBody.put("timestamp", timestamp);    //
+        requestBody.put("image_url", imageUrl);         // 실제 파일이 아닌 미디어 서버의 URL
 
         // 2. HTTP 헤더 설정 (JSON 타입 명시)
         HttpHeaders headers = new HttpHeaders();
