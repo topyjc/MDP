@@ -18,7 +18,8 @@ import java.nio.file.Paths;
 
 @RestController
 @RequestMapping("/media")
-public class MediaController {
+public class
+MediaController {
 
     @Value("${media.upload-dir}")
     private String uploadDir;
