@@ -30,7 +30,7 @@ public class DataController {
             @PathVariable String content,
             @PathVariable String tableNum) {
 
-        System.out.println("[API 요청 수신] 작품명: " + content + ", 타입: " + tableNum);
+        System.out.println("[API request connect] group: " + content + ", type: " + tableNum);
 
         // 1. 서비스 계층에 데이터 조회를 지시
         DataDto result = dataService.fetchData(content, tableNum);
