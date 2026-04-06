@@ -36,22 +36,15 @@ public class SensorWebSocketHandler extends TextWebSocketHandler {
     }
 
     public void broadcast(SensorMessage messageDto) {
-        // 🔍 1. 현재 연결된 클라이언트가 몇 명인지 확인!
-        System.out.println("[WS 디버그] 현재 연결된 세션 수: " + sessions.size());
-
         try {
             String json = objectMapper.writeValueAsString(messageDto);
-            // 🔍 2. JSON으로 변환된 메시지가 잘 만들어졌는지 확인!
-            System.out.println("[WS 디버그] 변환된 JSON: " + json);
 
             for (WebSocketSession session : sessions) {
                 if (session.isOpen()) {
                     session.sendMessage(new TextMessage(json));
-                    // 🔍 3. 실제 발송 성공 여부 확인!
-                    System.out.println("[WS 디버그] 발송 완료 대상: " + session.getId());
                 }
             }
-        } catch (Exception e) {
+        } catch (IOException e) {
             System.out.println("[WS] broadcast failed");
             e.printStackTrace();
         }
