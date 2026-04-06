@@ -150,7 +150,7 @@ public class MqttService implements MqttCallback {
 
         // 토픽 길이 검증 (최소 4칸은 되어야 함)
         if (topicParts.length < 4) {
-            System.out.println("[MQTT] 잘못된 미디어 토픽 형식입니다: " + topic);
+            System.out.println("[MQTT] wr: " + topic);
             return;
         }
 
@@ -178,7 +178,7 @@ public class MqttService implements MqttCallback {
         try {
             // 1. 미디어 서버 업로드 (현재 반환값이 JSON 문자열임)
             String uploadResponseJson = mediaServerClient.uploadImage(teamId, fileName, payload);
-            System.out.println("[MQTT][MEDIA] 미디어 서버 응답: " + uploadResponseJson);
+            System.out.println("[MQTT][MEDIA] media answer: " + uploadResponseJson);
 
             // 2. JSON에서 fileUrl만 추출 (ObjectMapper 사용)
             Map<String, String> responseMap = objectMapper.readValue(
@@ -192,14 +192,14 @@ public class MqttService implements MqttCallback {
             String mediaServerBaseUrl = "http://192.168.0.20:8090";
             String fullImageUrl = mediaServerBaseUrl + relativeUrl;
 
-            System.out.println("[MQTT][MEDIA] AI로 보낼 최종 URL: " + fullImageUrl);
+            System.out.println("[MQTT][MEDIA] AI final URL: " + fullImageUrl);
 
             // 4. AI 서버에 판독 요청 (풀 URL을 보냅니다)
             String aiResult = aiServerClient.requestInference(teamId, analysisType, fullImageUrl, currentTimestamp);
-            System.out.println("[AI] 최종 판독 결과: " + aiResult);
+            System.out.println("[AI] final result: " + aiResult);
 
         } catch (Exception e) {
-            System.out.println("[MQTT][MEDIA] 미디어 처리 중 에러 발생: " + e.getMessage());
+            System.out.println("[MQTT][MEDIA] media error: " + e.getMessage());
             e.printStackTrace();
         }
     }
