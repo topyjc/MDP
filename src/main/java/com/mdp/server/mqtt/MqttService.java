@@ -286,26 +286,28 @@ public class MqttService implements MqttCallback {
 
     }
 
-    public void publish(String topic, String payload) {
+    /**
+     * MQTT 브로커로 메시지를 발행(발신)하는 공통 메서드
+     */
+    public void publish(String topic, Object payload) {
         try {
-            if (client == null || !client.isConnected()) {
-                throw new IllegalStateException("MQTT client is not connected");
-            }
+            // 1. 보낼 데이터를 JSON 문자열로 변환 (하드웨어 기기가 읽기 편하게)
+            String jsonMessage = objectMapper.writeValueAsString(payload);
 
-            MqttMessage message = new MqttMessage(payload.getBytes(StandardCharsets.UTF_8));
-            message.setQos(mqttConfig.getQos());
-            message.setRetained(false);
+            // 2. MQTT 메시지 객체 생성
+            MqttMessage mqttMessage = new MqttMessage(jsonMessage.getBytes());
+            mqttMessage.setQos(1); // QoS 1: 최소 한 번은 무조건 전달 보장
 
-            client.publish(topic, message);
+            // 3. 발신!
+            client.publish(topic, mqttMessage);
 
-            System.out.println("[MQTT][PUBLISH] topic = " + topic);
-            System.out.println("[MQTT][PUBLISH] payload = " + payload);
+            System.out.println("[MQTT 발신 성공] 토픽: " + topic + " | 메시지: " + jsonMessage);
+
         } catch (Exception e) {
-            System.out.println("[MQTT][PUBLISH] failed");
+            System.err.println("[MQTT 발신 실패] 토픽: " + topic);
             e.printStackTrace();
-            throw new RuntimeException("MQTT publish failed", e);
         }
     }
+}
 
     // 나머지 messageArrived / publish / parse 로직은 기존 그대로 유지
-}
