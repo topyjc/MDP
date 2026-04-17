@@ -155,15 +155,15 @@ public class MqttService implements MqttCallback {
         }
 
         String teamId = topicParts[1];       // "streetlight"
-        String dataType = topicParts[2];     // "media"
-        String fileName = topicParts[3];     // "streetlight-fire-20260330-193015-123.jpg"
+        String dataType = topicParts[4];     // "media"
+        String fileName = topicParts[5];     // "streetlight-fire-20260330-193015-123.jpg"
 
         // 2. 파일명에서 분석 유형(analysisType) 추출
         // 하이픈(-) 기준으로 자르기
         String[] fileParts = fileName.split("-");
 
         // 최소 조이름과 분석유형은 있어야 하므로 검증
-        if (fileParts.length < 2) {
+        if (fileParts.length < 3) {
             System.out.println("[MQTT] 파일명 형식이 맞지 않습니다: " + fileName);
             return;
         }
