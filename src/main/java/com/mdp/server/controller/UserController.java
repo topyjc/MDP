@@ -1,6 +1,7 @@
 package com.mdp.server.controller;
 
 import com.mdp.server.dto.DataDto;
+import com.mdp.server.client.DbServerClient;
 import com.mdp.server.service.DataService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -11,10 +12,10 @@ import java.util.Map;
 @RequestMapping("/api/auth")
 public class UserController {
 
-    private final DataService dataService;
+    private final DbServerClient dbServerClient;
 
-    public UserController(DataService dataService) {
-        this.dataService = dataService;
+    public UserController(DbServerClient dbServerClient) {
+        this.dbServerClient = dbServerClient;
     }
 
     @PostMapping("/signup")
@@ -31,7 +32,7 @@ public class UserController {
             dataDto.setData(requestData); // 클라이언트가 보낸 데이터 그대로 삽입
 
             // 3. DB 서버로 쿨하게 전송!
-            dataService.processData(dataDto);
+            dbServerClient.sendData(dataDto);
 
             return ResponseEntity.ok("회원가입 정보가 DB 서버로 성공적으로 전송되었습니다.");
 
