@@ -8,8 +8,7 @@ import com.mdp.server.config.Mqtt;
 import com.mdp.server.dto.DataDto;
 import com.mdp.server.dto.SensorMessage;
 import com.mdp.server.service.DataService;
-import com.mdp.server.websocket.SensorWebSocketHandler;
-import jakarta.annotation.PreDestroy;
+import com.mdp.server.websocket.WebSocketHandler;
 import org.eclipse.paho.client.mqttv3.*;
 import org.springframework.stereotype.Service;
 
@@ -17,6 +16,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -24,7 +24,7 @@ import java.util.UUID;
 public class MqttService implements MqttCallback {
 
     private final DataService dataService;
-    private final SensorWebSocketHandler sensorWebSocketHandler;
+    private final WebSocketHandler webSocketHandler;
     private final MediaServerClient mediaServerClient;
     private final ObjectMapper objectMapper;
     private final Mqtt mqttConfig;
@@ -34,14 +34,14 @@ public class MqttService implements MqttCallback {
 
     public MqttService(
             DataService dataService,
-            SensorWebSocketHandler sensorWebSocketHandler,
+            WebSocketHandler webSocketHandler,
             MediaServerClient mediaServerClient,
             ObjectMapper objectMapper,
             Mqtt mqttConfig,
             AiServerClient aiServerClient
     ) {
         this.dataService = dataService;
-        this.sensorWebSocketHandler = sensorWebSocketHandler;
+        this.webSocketHandler = webSocketHandler;
         this.mediaServerClient = mediaServerClient;
         this.objectMapper = objectMapper;
         this.mqttConfig = mqttConfig;
@@ -145,63 +145,73 @@ public class MqttService implements MqttCallback {
     }
 
     private void handleMediaMessage(String topic, byte[] payload) {
-        // 1. 토픽 분리 (예: mdp/streetlight/media/streetlight-fire-20260330-193015-123.jpg)
+        // 1. 토픽 분리 (mdp/sensor/조이름/media/파일명)
         String[] topicParts = topic.split("/");
+        if (topicParts.length < 5) return;
 
-        // 토픽 길이 검증 (최소 4칸은 되어야 함)
-        if (topicParts.length < 4) {
-            System.out.println("[MQTT] wr: " + topic);
-            return;
-        }
+        String teamId = topicParts[2];
+        String fileName = topicParts[4]; // streetlight-fire_image_detection-0.8-20260330...
 
-        String teamId = topicParts[1];       // "streetlight"
-        String dataType = topicParts[4];     // "media"
-        String fileName = topicParts[5];     // "streetlight-fire-20260330-193015-123.jpg"
-
-        // 2. 파일명에서 분석 유형(analysisType) 추출
-        // 하이픈(-) 기준으로 자르기
+        // 2. 파일명 상세 분석 (하이픈 '-' 기준)
         String[] fileParts = fileName.split("-");
+        if (fileParts.length < 3) return;
 
-        // 최소 조이름과 분석유형은 있어야 하므로 검증
-        if (fileParts.length < 3) {
-            System.out.println("[MQTT] 파일명 형식이 맞지 않습니다: " + fileName);
-            return;
+        String analysisType = fileParts[1]; // "fire_image_detection"
+        double confidence = 0.0;
+        try {
+            confidence = Double.parseDouble(fileParts[2]); // "0.8" 추출
+        } catch (NumberFormatException e) {
+            System.out.println("[ERROR] 확률값 추출 실패: " + fileParts[2]);
         }
-
-        // 파일명의 두 번째 덩어리가 분석 유형
-        String analysisType = fileParts[1];  // "fire"
-        long currentTimestamp = System.currentTimeMillis(); // 타임스탬프는 메인 서버 시간
-
-        System.out.println("[MQTT][MEDIA] Team: " + teamId + " | Type: " + analysisType);
-        System.out.println("[MQTT][MEDIA] File: " + fileName + " (" + payload.length + " bytes)");
 
         try {
-            // 1. 미디어 서버 업로드 (현재 반환값이 JSON 문자열임)
+            // 3. 미디어 서버 업로드 (무조건 실행하여 URL 확보)
             String uploadResponseJson = mediaServerClient.uploadImage(teamId, fileName, payload);
-            System.out.println("[MQTT][MEDIA] media answer: " + uploadResponseJson);
+            Map<String, String> responseMap = objectMapper.readValue(uploadResponseJson, new TypeReference<Map<String, String>>() {});
+            String fullImageUrl = "http://192.168.0.20:8090" + responseMap.get("fileUrl");
 
-            // 2. JSON에서 fileUrl만 추출 (ObjectMapper 사용)
-            Map<String, String> responseMap = objectMapper.readValue(
-                    uploadResponseJson,
-                    new TypeReference<Map<String, String>>() {}
-            );
-            String relativeUrl = responseMap.get("fileUrl"); // "/media/files/..."
+            // 4. 확률 기반 판단 로직 (임계치는 상황에 맞게 조절하세요)
+            if (confidence >= 0.9) {
+                //  [확실] 확률 0.9 이상 -> AI 판독 없이 즉시 앱 전송
+                System.out.println("[ALERT] 확률 : (" + confidence + ") 즉시 알림 발송");
+                sendAlertToApp(analysisType, fullImageUrl, "실시간 위험 감지");
 
-            // 3. AI 서버가 접근할 수 있도록 완전한 HTTP 주소로 조립!
-            // (주의: 192.168.x.x 부분과 포트를 실제 미디어 서버 주소로 변경하세요!)
-            String mediaServerBaseUrl = "http://192.168.0.20:8090";
-            String fullImageUrl = mediaServerBaseUrl + relativeUrl;
+            } else if (confidence >= 0.5) {
+                //  [애매] 확률 0.5 ~ 0.9 -> AI 서버에 검증 요청
+                System.out.println("[ANALYSIS] 확률 : (" + confidence + "). AI 서버 재검증");
+                String aiResult = aiServerClient.requestInference(teamId, analysisType, fullImageUrl, System.currentTimeMillis());
 
-            System.out.println("[MQTT][MEDIA] AI final URL: " + fullImageUrl);
+                // [초간단 판단] 맨 앞의 detected=true 여부만 확인!
+                if (aiResult != null && aiResult.contains("detected=true")) {
 
-            // 4. AI 서버에 판독 요청 (풀 URL을 보냅니다)
-            String aiResult = aiServerClient.requestInference(teamId, analysisType, fullImageUrl, currentTimestamp);
-            System.out.println("[AI] final result: " + aiResult);
+                    System.out.println("[ALERT] AI 검증 완료 (위험 확정) 앱 알림 발송");
+                    sendAlertToApp(analysisType, fullImageUrl, "AI 분석 결과, 위험이 확인됨");
+
+                } else {
+
+                    // detected=false 이거나, 통신 오류로 이상한 값이 온 경우 모두 무시
+                    System.out.println("[SAFE] AI 검증 결과: 정상 상황 (또는 오탐지)으로 판단됨.");
+                }
+            } else {
+                // [무시] 확률 0.5 미만 -> 너무 낮으므로 로그만 남기고 종료
+                System.out.println("[INFO] 낮은 확률 (" + confidence + ")로 인해 알림 생략");
+            }
 
         } catch (Exception e) {
-            System.out.println("[MQTT][MEDIA] media error: " + e.getMessage());
             e.printStackTrace();
         }
+    }
+
+    // 웹소켓을 통해 앱으로 알림(URL 포함)을 쏘는 메서드
+    private void sendAlertToApp(String type, String url, String message) {
+        Map<String, Object> alert = new HashMap<>();
+        alert.put("type", type.contains("fire") ? "FIRE" : "INTRUSION");
+        alert.put("imageUrl", url);
+        alert.put("message", message);
+        alert.put("timestamp", System.currentTimeMillis());
+
+        // WebSocketHandler를 통해 현재 연결된 모든 앱 사용자에게 전송
+        webSocketHandler.broadcast(alert);
     }
 
     private void handleEventMessage(String topic, byte[] payload) {
@@ -219,7 +229,7 @@ public class MqttService implements MqttCallback {
                 dataDto.getTimestamp()
         );
 
-        sensorWebSocketHandler.broadcast(sensorMessage);
+        webSocketHandler.broadcast(sensorMessage);
 
         System.out.println("[MQTT][EVENT] DB save + WebSocket broadcast completed");
     }
