@@ -147,10 +147,13 @@ public class MqttService implements MqttCallback {
     private void handleMediaMessage(String topic, byte[] payload) {
         // 1. 토픽 분리 (mdp/sensor/조이름/media/파일명)
         String[] topicParts = topic.split("/");
-        if (topicParts.length < 5) return;
+        if (topicParts.length < 6) return;
 
-        String teamId = topicParts[2];
-        String fileName = topicParts[5]; // streetlight-fire_image_detection-0.8-20260330...
+        String direction = topicParts[1];   // "sensor"
+        String teamId = topicParts[2];      // "home" (조이름)
+        String deviceName = topicParts[3];  // "esp32-led" (기기명 - 새로 추가됨!)
+        String dataType = topicParts[4];    // "media"
+        String fileName = topicParts[5];    // "fire_image_detection-0.8-2026.jpg"
 
         // 2. 파일명 상세 분석 (하이픈 '-' 기준)
         String[] fileParts = fileName.split("-");

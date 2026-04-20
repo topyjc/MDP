@@ -33,22 +33,18 @@ public class DeviceControlController {
         
         switch (request.getTarget().toUpperCase()) {
             case "LED1":
-                mqttService.publish("mdp/house/led1/control", commandData);
-                break;
             case "LED2":
-                mqttService.publish("mdp/house/led2/control", commandData);
+                mqttService.publish("mdp/control/house/esp32-led/event", commandData);
                 break;
             case "GAS":
-                mqttService.publish("mdp/house/gas/control", commandData);
-                break;
             case "FAN":
-                mqttService.publish("mdp/house/fan/control", commandData);
+                mqttService.publish("mdp/control/house/esp32-gas/event", commandData);
                 break;
             case "INTRUSION":
-                    mqttService.publish("mdp/house/intrusion/control", commandData);
+                mqttService.publish("mdp/control/house/laptop-cam/event", commandData);
                 break;
             case "OTP":
-                mqttService.publish("mdp/house/doorlock/otp", commandData);
+                mqttService.publish("mdp/control/house/esp32-doorlock/event", commandData);
                 break;
             case "QR":
                 // QR은 DB 저장 로직이 들어가야 하므로 일단 보류!
