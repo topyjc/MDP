@@ -150,7 +150,7 @@ public class MqttService implements MqttCallback {
         if (topicParts.length < 5) return;
 
         String teamId = topicParts[2];
-        String fileName = topicParts[4]; // streetlight-fire_image_detection-0.8-20260330...
+        String fileName = topicParts[5]; // streetlight-fire_image_detection-0.8-20260330...
 
         // 2. 파일명 상세 분석 (하이픈 '-' 기준)
         String[] fileParts = fileName.split("-");
