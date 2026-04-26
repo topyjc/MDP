@@ -1,5 +1,6 @@
 package com.mdp.server.service;
 
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
@@ -33,5 +34,28 @@ public class JWTService {
                 .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME)) // 만료 시간
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256) // 비밀키로 도장 쾅!
                 .compact(); // 텍스트(String)로 압축해서 반환
+    }
+
+    // 토큰에서 모든 정보(Claims) 추출
+    public Claims extractAllClaims(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(getSigningKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+    }
+
+    // 토큰에서 userId 추출
+    public String extractUserId(String token) {
+        return extractAllClaims(token).getSubject();
+    }
+
+    // 토큰 유효성 검증 (만료 여부 등)
+    public boolean validateToken(String token) {
+        try {
+            return !extractAllClaims(token).getExpiration().before(new Date());
+        } catch (Exception e) {
+            return false;
+        }
     }
 }
