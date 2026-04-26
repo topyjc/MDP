@@ -1,4 +1,4 @@
-package com.mdp.server.service;
+package com.mdp.server.util;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -11,7 +11,7 @@ import java.security.Key;
 import java.util.Date;
 
 @Component
-public class JWTService {
+public class JwtUtil {
 
     // 🚨 중요: 토큰에 도장을 찍을 비밀키입니다. (무조건 영문+숫자 32글자 이상이어야 안전합니다!)
     private final String SECRET_KEY = "MySuperSecretKeyForMdpProjectWhichIsVeryLongAndSecure";
