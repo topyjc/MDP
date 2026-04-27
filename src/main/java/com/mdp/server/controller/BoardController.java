@@ -45,20 +45,20 @@ public class BoardController {
     public ResponseEntity<?> createBoard(@RequestBody Map<String, Object> boardData, HttpServletRequest request) {
         try {
             // 1. JWT 인터셉터가 request에 담아준 userId를 꺼냅니다.
-            // (누가 썼는지 DB에 저장해야 하니까 필수!)
             String userId = (String) request.getAttribute("userId");
             if (userId == null) {
                 return ResponseEntity.status(401).body(Map.of("message", "로그인 정보가 없습니다."));
             }
 
-            // 2. 작성자 아이디를 DB로 보낼 데이터에 몰래 끼워 넣습니다.
-            boardData.put("userid", userId);
+            boardData.put("userId", userId);
 
             // 3. DB 서버로 보낼 DTO 포장
             DataDto requestDto = new DataDto();
             requestDto.setContent("plt");
-            requestDto.setTable_num("1"); // 게시판 쓰기 테이블 번호
+            requestDto.setTable_num("1"); // 🔥 알려주신 게시판 쓰기 테이블 번호로 수정!
             requestDto.setTimestamp(System.currentTimeMillis());
+            
+            // data 객체를 꽂아 넣습니다. (이 안에 이제 진짜 userId가 들어있습니다)
             requestDto.setData(boardData);
 
             // 4. DB 서버로 전송!
