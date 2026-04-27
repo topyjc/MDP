@@ -42,9 +42,13 @@ public class JwtInterceptor implements HandlerInterceptor {
 
         // 토큰이 없거나 유효하지 않으면 401(Unauthorized) 에러 반환
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+
+        // 🔥 클라이언트(또는 테스트 툴)가 읽을 수 있도록 Content-Type 명시!
+        response.setContentType("text/plain; charset=UTF-8");
         response.setCharacterEncoding("UTF-8");
         response.getWriter().write("인증에 실패했습니다. 유효한 토큰이 필요합니다.");
 
         return false; // 컨트롤러로 요청을 넘기지 않고 여기서 차단
+        
     }
 }

@@ -17,6 +17,7 @@ public class InterceptorConfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(jwtInterceptor)
                 .addPathPatterns("/api/**") // 모든 api 검사
-                .excludePathPatterns("/api/auth/**"); // 로그인, 회원가입은 제외
+                .excludePathPatterns("/api/auth/**") // 로그인, 회원가입은 제외
+                .excludePathPatterns("/api/alert/**");
     }
 }
