@@ -28,21 +28,31 @@ public class DataService {
 
         try {
             // 1. DB 서버로 데이터 전송 및 응답 받아오기
-            // 🚨 (주의: DbServerClient.sendData() 메서드가 DB 서버의 응답(String)을  반환하도록설정되어 있어야 합니다!)
             String responseBody = dbServerClient.sendData(data);
+
+            // 🔥 [디버깅 1] DB 서버가 준 진짜 응답(날것) 눈으로 확인하기!
+            System.out.println("====== [디버그: DB 서버 응답 원본] ======");
+            System.out.println(responseBody);
+            System.out.println("========================================");
 
             // 2. DB 서버가 응답을 주면 JSON을 분석해서 "success" 값을 확인
             if (responseBody != null && !responseBody.isBlank()) {
                 JsonNode root = objectMapper.readTree(responseBody);
-                return root.path("success").asBoolean(false); // success 필드가 없거나 false면 false 반환
+                boolean isSuccess = root.path("success").asBoolean(false);
+
+                // 🔥 [디버깅 2] 파싱이 제대로 됐는지 확인!
+                System.out.println("[디버그: JSON 파싱 결과] success = " + isSuccess);
+
+                return isSuccess;
             }
 
-            // 단순 센서 데이터 저장(MQTT) 등 응답이 중요하지 않은 경우는 true로 간주
             return true;
 
         } catch (Exception e) {
-            System.out.println("[DB 통신/파싱 오류] " + e.getMessage());
-            return false; // 파싱 실패나 통신 오류 시 false 반환
+            // 🔥 [디버깅 3] 에러가 났다면 도대체 무슨 에러인지 상세히 출력!
+            System.out.println("[DB 통신/파싱 오류 발생!!!]");
+            e.printStackTrace(); // 에러의 전체 원인을 빨간 글씨로 쫙 뽑아줍니다.
+            return false;
         }
     }
 
