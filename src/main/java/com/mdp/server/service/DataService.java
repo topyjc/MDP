@@ -38,9 +38,10 @@ public class DataService {
             // 2. DB 서버가 응답을 주면 JSON을 분석해서 "success" 값을 확인
             if (responseBody != null && !responseBody.isBlank()) {
                 JsonNode root = objectMapper.readTree(responseBody);
-                boolean isSuccess = root.path("success").asBoolean(false);
 
-                // 🔥 [디버깅 2] 파싱이 제대로 됐는지 확인!
+                // 🔥 수정된 부분: "data" 객체 안으로 한 번 더 들어가서 "success"를 찾습니다!
+                boolean isSuccess = root.path("data").path("success").asBoolean(false);
+
                 System.out.println("[디버그: JSON 파싱 결과] success = " + isSuccess);
 
                 return isSuccess;
