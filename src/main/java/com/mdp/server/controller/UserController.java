@@ -36,7 +36,7 @@ public class UserController {
             // dataService.processData(requestDto); (DB 서버 전송 로직)
 
             // --- DB 서버 확인 완료 가정 ---
-            boolean isSuccess = true;
+            boolean isSuccess = dataService.processData(requestDto); // 진짜 응답 확인!
             String userId = (String) loginData.get("userId");
             int isAdmin = (int) loginData.get("isAdmin");
 

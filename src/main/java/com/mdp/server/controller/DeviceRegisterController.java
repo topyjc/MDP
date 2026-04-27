@@ -30,7 +30,7 @@ public class DeviceRegisterController {
         qrData.put("ownerId", userId); // 누구 소유인지 추가
 
         DataDto dataDto = new DataDto();
-        dataDto.setContent("plt");
+        dataDto.setContent("house");
         dataDto.setTable_num("3"); // 기기 등록 테이블 3번(예시)
         dataDto.setData(qrData);
 

@@ -2,14 +2,9 @@ package com.mdp.server.client;
 
 import com.mdp.server.dto.DataDto;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
-
-import java.util.List;
-import java.util.Collections;
 
 @Component
 public class DbServerClient {
@@ -20,9 +15,9 @@ public class DbServerClient {
     private String dbServerUrl; // application.properties에 설정된 DB 서버 주소
 
     /**
-     * [DB 서버로 데이터 저장 - 기존 완료된 기능]
+     * [DB 서버로 데이터 저장 - String 반환 기능 추가]
      */
-    public void sendData(DataDto data) {
+    public String sendData(DataDto data) {
         try {
             ResponseEntity<String> response = restTemplate.postForEntity(
                     dbServerUrl + "/data",
@@ -30,8 +25,14 @@ public class DbServerClient {
                     String.class
             );
             System.out.println("[DB SERVER 전송] POST response = " + response.getStatusCode());
+
+            // 🔥 DB 서버가 보내준 JSON 응답(예: {"success": true})을 그대로 반환합니다!
+            return response.getBody();
+
         } catch (Exception e) {
             System.out.println("[DB SERVER 전송 실패] " + e.getMessage());
+            // 에러가 났을 때는 null을 반환해서, DataService가 "아! 실패했구나(success: false)"라고 판단하게 만듭니다.
+            return null;
         }
     }
 
@@ -39,7 +40,6 @@ public class DbServerClient {
      * [DB 서버에서 데이터 가져오기 - 신규 추가 기능]
      * DB 서버의 GET API를 호출하여 데이터를 List 형태로 받아옵니다.
      */
-    // 반환 타입을 List가 아니라 그냥 DataDto 하나로 바꿉니다!
     public DataDto getDataFromDb(String content, String tableNum) {
         try {
             String url = dbServerUrl + "/data?content=" + content + "&table_num=" + tableNum;
