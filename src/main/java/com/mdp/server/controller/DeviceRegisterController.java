@@ -27,7 +27,7 @@ public class DeviceRegisterController {
         String userId = (String) request.getAttribute("userId");
 
         // DB 서버 규격에 맞게 구성
-        qrData.put("ownerId", userId); // 누구 소유인지 추가
+        qrData.put("userid", userId); // 누구 소유인지 추가
 
         DataDto dataDto = new DataDto();
         dataDto.setContent("house");
