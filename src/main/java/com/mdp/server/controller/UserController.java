@@ -36,6 +36,8 @@ public class UserController {
 
             boolean isSuccess = dataService.processData(requestDto);
 
+            System.out.println("[디버그] DataService.processData() 반환값: " + isSuccess);
+
             if (isSuccess) {
                 return ResponseEntity.ok(Map.of(
                         "message", "회원가입이 성공적으로 완료되었습니다.",
