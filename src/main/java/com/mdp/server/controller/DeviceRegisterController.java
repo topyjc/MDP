@@ -32,6 +32,7 @@ public class DeviceRegisterController {
         DataDto dataDto = new DataDto();
         dataDto.setContent("house");
         dataDto.setTable_num("3"); // 기기 등록 테이블 3번(예시)
+        dataDto.setTimestamp(System.currentTimeMillis());
         dataDto.setData(qrData);
 
         dataService.processData(dataDto);
