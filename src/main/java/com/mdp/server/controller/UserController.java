@@ -15,7 +15,6 @@ public class UserController {
     private final DataService dataService;
     private final JwtUtil jwtUtil;
 
-    // 생성자로 주입받기
     public UserController(DataService dataService, JwtUtil jwtUtil) {
         this.dataService = dataService;
         this.jwtUtil = jwtUtil;
@@ -23,20 +22,18 @@ public class UserController {
 
     /**
      * [회원가입 API]
-     * 복구 완료! DB 서버로 회원가입 정보를 전송합니다.
      */
     @PostMapping("/signup")
     public ResponseEntity<?> signUp(@RequestBody Map<String, Object> signUpData) {
         try {
-            // 기본 권한이 안 넘어왔을 경우 일반 유저(0)로 세팅
             signUpData.putIfAbsent("isAdmin", 0);
 
             DataDto requestDto = new DataDto();
             requestDto.setContent("plt");
-            requestDto.setTable_num("0"); // 🔥 DB 서버와 약속한 회원가입 테이블 번호로 맞춰주세요! (예: 3)
+            requestDto.setTable_num("0"); // DB 서버의 회원가입 테이블 번호
+            requestDto.setTimestamp(System.currentTimeMillis()); // 🔥 에러 해결: 타임스탬프 추가!
             requestDto.setData(signUpData);
 
-            // DB 서버로 회원가입 요청 전송
             boolean isSuccess = dataService.processData(requestDto);
 
             if (isSuccess) {
@@ -61,7 +58,6 @@ public class UserController {
 
     /**
      * [로그인 API]
-     * DB 검증 후 성공 시 JWT 토큰을 발급합니다.
      */
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, Object> loginData) {
@@ -70,14 +66,14 @@ public class UserController {
 
             DataDto requestDto = new DataDto();
             requestDto.setContent("plt");
-            requestDto.setTable_num("4"); // 🔥 로그인 테이블 번호
+            requestDto.setTable_num("4"); // DB 서버의 로그인 테이블 번호
+            requestDto.setTimestamp(System.currentTimeMillis()); // 🔥 에러 해결: 타임스탬프 추가!
             requestDto.setData(loginData);
 
-            // DB 서버 확인 로직
             boolean isSuccess = dataService.processData(requestDto);
             String userId = (String) loginData.get("userId");
 
-            // Map에서 가져온 값이 Integer일 수도 있으므로 안전하게 파싱 (에러 방지용)
+            // Map에서 가져온 값이 Integer일 수도 있으므로 안전하게 파싱
             int isAdmin = 0;
             if (loginData.get("isAdmin") != null) {
                 isAdmin = Integer.parseInt(String.valueOf(loginData.get("isAdmin")));
