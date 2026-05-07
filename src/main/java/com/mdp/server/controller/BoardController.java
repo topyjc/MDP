@@ -25,7 +25,6 @@ public class BoardController {
     public ResponseEntity<?> getBoards() {
         try {
             // DB 서버에 게시판 데이터(목록) 요청
-            // (예: 게시판 테이블 번호가 "10"이라고 가정)
             DataDto responseDto = dataService.fetchData("plt", "1");
 
             return ResponseEntity.ok(Map.of(

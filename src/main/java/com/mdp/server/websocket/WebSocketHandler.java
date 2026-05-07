@@ -35,12 +35,9 @@ public class WebSocketHandler extends TextWebSocketHandler {
         System.out.println("[WS] disconnected: " + session.getId());
     }
 
-    // 기존: public void broadcast(SensorMessage messageDto) {
-
-    // 변경: 어떤 객체든 다 받을 수 있도록 Object로 수정!
     public void broadcast(Object messageDto) {
         try {
-            // ObjectMapper가 알아서 해당 객체의 형태에 맞게 JSON 문자열로 변환해 줍니다.
+            // ObjectMapper가 해당 객체의 형태에 맞게 JSON 문자열로 변환
             String json = objectMapper.writeValueAsString(messageDto);
 
             for (WebSocketSession session : sessions) {
