@@ -46,6 +46,7 @@ public class BoardController {
         try {
             // 1. JWT 인터셉터가 request에 담아준 userId를 꺼냅니다.
             String userId = (String) request.getAttribute("userId");
+            System.out.println("유저 아이디 " + userId);
             if (userId == null) {
                 return ResponseEntity.status(401).body(Map.of("message", "로그인 정보가 없습니다."));
             }
