@@ -23,15 +23,14 @@ public class DeviceRegisterController {
 
     @PostMapping("/register")
     public ResponseEntity<?> registerDevice(@RequestBody Map<String, Object> qrData, HttpServletRequest request) {
-        // 인터셉터가 담아준 userId 꺼내기
+
         String userId = (String) request.getAttribute("userId");
 
-        // DB 서버 규격에 맞게 구성
-        qrData.put("userid", userId); // 누구 소유인지 추가
+        qrData.put("userid", userId);
 
         DataDto dataDto = new DataDto();
         dataDto.setContent("house");
-        dataDto.setTable_num("3"); // 기기 등록 테이블 3번(예시)
+        dataDto.setTable_num("3");
         dataDto.setTimestamp(System.currentTimeMillis());
         dataDto.setData(qrData);
 

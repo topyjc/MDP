@@ -126,16 +126,14 @@ public class MqttService implements MqttCallback {
 
     @Override
     public void messageArrived(String topic, MqttMessage message) throws Exception {
-        // ... (기존 로그 출력 코드들) ...
 
         byte[] payload = message.getPayload();
 
-        // 💡 여기가 핵심: 토픽 이름에 "media"가 포함되어 있으면 미디어 처리 로직으로!
         if (topic.contains("media")) {
-            // 미디어 파일(이미지 등) HTTP 전송 로직 호출
+
             handleMediaMessage(topic, payload);
         } else {
-            // 기존의 일반 센서 JSON 데이터 처리 로직 호출
+
             handleEventMessage(topic, payload);
         }
     }
@@ -145,58 +143,56 @@ public class MqttService implements MqttCallback {
     }
 
     private void handleMediaMessage(String topic, byte[] payload) {
-        // 1. 토픽 분리 (mdp/sensor/조이름/media/파일명)
+        // 토픽 분리 (mdp/sensor/조이름/media/파일명)
         String[] topicParts = topic.split("/");
         if (topicParts.length < 6) return;
 
         String direction = topicParts[1];   // "sensor"
         String teamId = topicParts[2];      // "home" (조이름)
-        String deviceName = topicParts[3];  // "esp32-led" (기기명 - 새로 추가됨!)
+        String deviceName = topicParts[3];  // "esp32-led"
         String dataType = topicParts[4];    // "media"
         String fileName = topicParts[5];    // "fire_image_detection-0.8-2026.jpg"
 
-        // 2. 파일명 상세 분석 (하이픈 '-' 기준)
+        // 파일명 분석 (하이픈 '-' 기준)
         String[] fileParts = fileName.split("-");
         if (fileParts.length < 3) return;
 
         String analysisType = fileParts[1]; // "fire_image_detection"
         double confidence = 0.0;
         try {
-            confidence = Double.parseDouble(fileParts[2]); // "0.8" 추출
+            confidence = Double.parseDouble(fileParts[2]);
         } catch (NumberFormatException e) {
             System.out.println("[ERROR] 확률값 추출 실패: " + fileParts[2]);
         }
 
         try {
-            // 3. 미디어 서버 업로드 (무조건 실행하여 URL 확보)
+            // 미디어 서버 업로드 (URL)
             String uploadResponseJson = mediaServerClient.uploadImage(teamId, fileName, payload);
             Map<String, String> responseMap = objectMapper.readValue(uploadResponseJson, new TypeReference<Map<String, String>>() {});
             String fullImageUrl = "http://192.168.0.20:8090" + responseMap.get("fileUrl");
 
-            // 4. 확률 기반 판단 로직 (임계치는 상황에 맞게 조절하세요)
+            // 확률 기반 판단 로직
             if (confidence >= 0.9) {
-                //  [확실] 확률 0.9 이상 -> AI 판독 없이 즉시 앱 전송
+                // 확률 0.9 이상 -> AI 판독 없이 즉시 앱 전송
                 System.out.println("[ALERT] 확률 : (" + confidence + ") 즉시 알림 발송");
                 sendAlertToApp(analysisType, fullImageUrl, "실시간 위험 감지");
 
             } else if (confidence >= 0.5) {
-                //  [애매] 확률 0.5 ~ 0.9 -> AI 서버에 검증 요청
+                //  확률 0.5 ~ 0.9 -> AI 서버에 검증 요청
                 System.out.println("[ANALYSIS] 확률 : (" + confidence + "). AI 서버 재검증");
                 String aiResult = aiServerClient.requestInference(teamId, analysisType, fullImageUrl, System.currentTimeMillis());
 
-                // [초간단 판단] 맨 앞의 detected=true 여부만 확인!
+                //
                 if (aiResult != null && aiResult.contains("detected=true")) {
 
                     System.out.println("[ALERT] AI 검증 완료 (위험 확정) 앱 알림 발송");
                     sendAlertToApp(analysisType, fullImageUrl, "AI 분석 결과, 위험이 확인됨");
 
                 } else {
-
-                    // detected=false 이거나, 통신 오류로 이상한 값이 온 경우 모두 무시
                     System.out.println("[SAFE] AI 검증 결과: 정상 상황 (또는 오탐지)으로 판단됨.");
                 }
             } else {
-                // [무시] 확률 0.5 미만 -> 너무 낮으므로 로그만 남기고 종료
+                // 확률 0.5 미만
                 System.out.println("[INFO] 낮은 확률 (" + confidence + ")로 인해 알림 생략");
             }
 
@@ -205,7 +201,6 @@ public class MqttService implements MqttCallback {
         }
     }
 
-    // 웹소켓을 통해 앱으로 알림(URL 포함)을 쏘는 메서드
     private void sendAlertToApp(String type, String url, String message) {
         Map<String, Object> alert = new HashMap<>();
         alert.put("type", type.contains("fire") ? "FIRE" : "INTRUSION");
@@ -213,7 +208,6 @@ public class MqttService implements MqttCallback {
         alert.put("message", message);
         alert.put("timestamp", System.currentTimeMillis());
 
-        // WebSocketHandler를 통해 현재 연결된 모든 앱 사용자에게 전송
         webSocketHandler.broadcast(alert);
     }
 
@@ -299,19 +293,14 @@ public class MqttService implements MqttCallback {
 
     }
 
-    /**
-     * MQTT 브로커로 메시지를 발행(발신)하는 공통 메서드
-     */
     public void publish(String topic, Object payload) {
         try {
-            // 1. 보낼 데이터를 JSON 문자열로 변환 (하드웨어 기기가 읽기 편하게)
+
             String jsonMessage = objectMapper.writeValueAsString(payload);
 
-            // 2. MQTT 메시지 객체 생성
             MqttMessage mqttMessage = new MqttMessage(jsonMessage.getBytes());
-            mqttMessage.setQos(1); // QoS 1: 최소 한 번은 무조건 전달 보장
+            mqttMessage.setQos(1);
 
-            // 3. 발신!
             client.publish(topic, mqttMessage);
 
             System.out.println("[MQTT 발신 성공] 토픽: " + topic + " | 메시지: " + jsonMessage);
@@ -322,5 +311,3 @@ public class MqttService implements MqttCallback {
         }
     }
 }
-
-    // 나머지 messageArrived / publish / parse 로직은 기존 그대로 유지

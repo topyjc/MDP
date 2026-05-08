@@ -18,32 +18,26 @@ public class BoardController {
         this.dataService = dataService;
     }
 
-    /**
-     * 🔓 [조회] 게시판 목록 보기 (JWT 필요 없음 - Public)
-     */
     @GetMapping("/public/boards")
     public ResponseEntity<?> getBoards() {
         try {
-            // DB 서버에 게시판 데이터(목록) 요청
+
             DataDto responseDto = dataService.fetchData("plt", "1");
 
             return ResponseEntity.ok(Map.of(
                     "message", "게시판 목록 조회 성공",
-                    "data", responseDto.getData() // DB 서버가 보내준 게시글 리스트
+                    "data", responseDto.getData()
             ));
         } catch (Exception e) {
-            System.out.println("[게시판 조회 실패] " + e.getMessage());
+            System.out.println("게시판 조회 실패 : " + e.getMessage());
             return ResponseEntity.internalServerError().body(Map.of("message", "조회 오류"));
         }
     }
 
-    /**
-     * 🚨 [작성] 새 게시글 쓰기 (JWT 필수 - Private)
-     */
     @PostMapping("/private/boards")
     public ResponseEntity<?> createBoard(@RequestBody Map<String, Object> boardData, HttpServletRequest request) {
         try {
-            // 1. JWT 인터셉터가 request에 담아준 userId를 꺼냅니다.
+
             String userId = (String) request.getAttribute("userId");
             System.out.println("유저 아이디 " + userId);
             if (userId == null) {
@@ -52,16 +46,12 @@ public class BoardController {
 
             boardData.put("userId", userId);
 
-            // 3. DB 서버로 보낼 DTO 포장
             DataDto requestDto = new DataDto();
             requestDto.setContent("plt");
-            requestDto.setTable_num("1"); // 🔥 알려주신 게시판 쓰기 테이블 번호로 수정!
+            requestDto.setTable_num("1");
             requestDto.setTimestamp(System.currentTimeMillis());
-            
-            // data 객체를 꽂아 넣습니다. (이 안에 이제 진짜 userId가 들어있습니다)
             requestDto.setData(boardData);
 
-            // 4. DB 서버로 전송!
             boolean isSuccess = dataService.processData(requestDto);
 
             if (isSuccess) {
@@ -71,7 +61,7 @@ public class BoardController {
             }
 
         } catch (Exception e) {
-            System.out.println("[게시글 작성 실패] " + e.getMessage());
+            System.out.println("게시글 작성 실패 : " + e.getMessage());
             return ResponseEntity.internalServerError().body(Map.of("message", "서버 오류"));
         }
     }

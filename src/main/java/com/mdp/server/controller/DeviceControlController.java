@@ -14,7 +14,6 @@ public class DeviceControlController {
 
     private final MqttService mqttService;
 
-    // 의존성 주입 완료!
     public DeviceControlController(MqttService mqttService) {
         this.mqttService = mqttService;
     }
@@ -22,9 +21,9 @@ public class DeviceControlController {
     @PostMapping("/control")
     public ResponseEntity<String> controlDevice(@RequestBody DeviceControlDto request) {
 
-        System.out.println("[API 수신] 타겟: " + request.getTarget() + ", 동작: " + request.getAction() + ", 값: " + request.getValue());
+        System.out.println("API 수신 타겟: " + request.getTarget() + ", 동작: " + request.getAction() + ", 값: " + request.getValue());
 
-        // 하드웨어로 보낼 데이터 맵 (JSON으로 변환됨)
+        // JSON 변환
         Map<String, String> commandData = new HashMap<>();
         commandData.put("action", request.getAction());
         if (request.getValue() != null) {
@@ -45,10 +44,6 @@ public class DeviceControlController {
                 break;
             case "OTP":
                 mqttService.publish("mdp/control/house/esp32-doorlock/event", commandData);
-                break;
-            case "QR":
-                // QR은 DB 저장 로직이 들어가야 하므로 일단 보류!
-                System.out.println("-> DB에 새로운 기기 등록 진행...");
                 break;
             default:
                 return ResponseEntity.badRequest().body("알 수 없는 타겟입니다: " + request.getTarget());

@@ -17,9 +17,9 @@ public class InterceptorConfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(jwtInterceptor)
                 .addPathPatterns("/api/devices/**") //
-                .addPathPatterns("/api/private/boards")
-                .excludePathPatterns("/api/auth/**") // 로그인, 회원가입은 제외
-                .excludePathPatterns("/api/alert/**")
-                .excludePathPatterns("/api/device/**");
+                .addPathPatterns("/api/private/boards") // 게시판 조회 제외
+                .excludePathPatterns("/api/auth/**") // 로그인, 회원가입 제외
+                .excludePathPatterns("/api/alert/**") // 알림 제외
+                .excludePathPatterns("/api/device/**"); //
     }
 }

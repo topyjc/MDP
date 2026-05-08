@@ -37,7 +37,6 @@ public class WebSocketHandler extends TextWebSocketHandler {
 
     public void broadcast(Object messageDto) {
         try {
-            // ObjectMapper가 해당 객체의 형태에 맞게 JSON 문자열로 변환
             String json = objectMapper.writeValueAsString(messageDto);
 
             for (WebSocketSession session : sessions) {

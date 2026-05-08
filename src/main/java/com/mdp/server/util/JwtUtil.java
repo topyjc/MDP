@@ -13,30 +13,25 @@ import java.util.Date;
 @Component
 public class JwtUtil {
 
-    // 🚨 중요: 토큰에 도장을 찍을 비밀키입니다. (무조건 영문+숫자 32글자 이상이어야 안전합니다!)
     private final String SECRET_KEY = "MySuperSecretKeyForMdpProjectWhichIsVeryLongAndSecure";
 
-    // 토큰 유효 기간: 24시간 (밀리초 단위)
     private final long EXPIRATION_TIME = 1000L * 60 * 60 * 24;
 
-    // 비밀키를 암호화 알고리즘에 맞는 형태(Key 객체)로 변환하는 메서드
     private Key getSigningKey() {
         byte[] keyBytes = SECRET_KEY.getBytes(StandardCharsets.UTF_8);
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
-    // 🔥 토큰 발급 메서드
     public String generateToken(String userId, int isAdmin) {
         return Jwts.builder()
-                .setSubject(userId) // 토큰의 주인 (아이디)
-                .claim("isAdmin", isAdmin) // 추가 데이터 (관리자 여부)
-                .setIssuedAt(new Date()) // 발급 시간
-                .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME)) // 만료 시간
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256) // 비밀키로 도장 쾅!
-                .compact(); // 텍스트(String)로 압축해서 반환
+                .setSubject(userId)
+                .claim("isAdmin", isAdmin)
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .compact();
     }
 
-    // 토큰에서 모든 정보(Claims) 추출
     public Claims extractAllClaims(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(getSigningKey())
@@ -45,12 +40,10 @@ public class JwtUtil {
                 .getBody();
     }
 
-    // 토큰에서 userId 추출
     public String extractUserId(String token) {
         return extractAllClaims(token).getSubject();
     }
 
-    // 토큰 유효성 검증 (만료 여부 등)
     public boolean validateToken(String token) {
         try {
             return !extractAllClaims(token).getExpiration().before(new Date());

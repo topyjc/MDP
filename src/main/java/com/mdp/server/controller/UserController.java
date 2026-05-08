@@ -20,9 +20,6 @@ public class UserController {
         this.jwtUtil = jwtUtil;
     }
 
-    /**
-     * [회원가입 API]
-     */
     @PostMapping("/signup")
     public ResponseEntity<?> signUp(@RequestBody Map<String, Object> signUpData) {
         try {
@@ -30,13 +27,11 @@ public class UserController {
 
             DataDto requestDto = new DataDto();
             requestDto.setContent("plt");
-            requestDto.setTable_num("0"); // DB 서버의 회원가입 테이블 번호
-            requestDto.setTimestamp(System.currentTimeMillis()); // 🔥 에러 해결: 타임스탬프 추가!
+            requestDto.setTable_num("0");
+            requestDto.setTimestamp(System.currentTimeMillis());
             requestDto.setData(signUpData);
 
             boolean isSuccess = dataService.processData(requestDto);
-
-            System.out.println("[디버그] DataService.processData() 반환값: " + isSuccess);
 
             if (isSuccess) {
                 return ResponseEntity.ok(Map.of(
@@ -45,22 +40,19 @@ public class UserController {
                 ));
             } else {
                 return ResponseEntity.badRequest().body(Map.of(
-                        "message", "회원가입에 실패했습니다. (아이디 중복 등)",
+                        "message", "회원가입에 실패했습니다.",
                         "success", false
                 ));
             }
 
         } catch (Exception e) {
-            System.out.println("[회원가입 통신 실패] " + e.getMessage());
+            System.out.println("회원가입 통신 실패 : " + e.getMessage());
             return ResponseEntity.internalServerError().body(Map.of(
                     "message", "서버 통신 오류가 발생했습니다."
             ));
         }
     }
 
-    /**
-     * [로그인 API]
-     */
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, Object> loginData) {
         try {
@@ -68,28 +60,27 @@ public class UserController {
 
             DataDto requestDto = new DataDto();
             requestDto.setContent("plt");
-            requestDto.setTable_num("4"); // DB 서버의 로그인 테이블 번호
-            requestDto.setTimestamp(System.currentTimeMillis()); // 🔥 에러 해결: 타임스탬프 추가!
+            requestDto.setTable_num("4");
+            requestDto.setTimestamp(System.currentTimeMillis());
             requestDto.setData(loginData);
 
             boolean isSuccess = dataService.processData(requestDto);
             String userId = (String) loginData.get("userId");
 
-            // Map에서 가져온 값이 Integer일 수도 있으므로 안전하게 파싱
             int isAdmin = 0;
             if (loginData.get("isAdmin") != null) {
                 isAdmin = Integer.parseInt(String.valueOf(loginData.get("isAdmin")));
             }
 
             if (isSuccess) {
-                // 🔥 드디어 진짜 JWT 토큰 발급!
+                // JWT 토큰 발급
                 String token = jwtUtil.generateToken(userId, isAdmin);
 
                 return ResponseEntity.ok(Map.of(
                         "message", "로그인 성공!",
                         "userId", userId,
                         "isAdmin", isAdmin,
-                        "token", token // ⬅️ 발급된 진짜 토큰을 클라이언트로 내려줍니다.
+                        "token", token
                 ));
             } else {
                 return ResponseEntity.status(401).body(Map.of(
@@ -98,7 +89,7 @@ public class UserController {
             }
 
         } catch (Exception e) {
-            System.out.println("[로그인 통신 실패] " + e.getMessage());
+            System.out.println("로그인 통신 실패 : " + e.getMessage());
             return ResponseEntity.internalServerError().body(Map.of(
                     "message", "서버 통신 오류가 발생했습니다."
             ));
