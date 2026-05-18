@@ -26,7 +26,7 @@ public class DeviceRegisterController {
 
         String userId = (String) request.getAttribute("userId");
 
-        qrData.put("userid", userId);
+        qrData.put("userId", userId);
 
         DataDto dataDto = new DataDto();
         dataDto.setContent("house");
