@@ -47,7 +47,7 @@ public class DeviceControlController {
                 break;
             default:
                 return ResponseEntity.badRequest().body("알 수 없는 타겟입니다: " + request.getTarget());
-        }
+        }   
 
         return ResponseEntity.ok("명령 처리 완료: " + request.getTarget());
     }
