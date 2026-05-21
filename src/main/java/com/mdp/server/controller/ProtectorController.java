@@ -38,11 +38,13 @@ public class ProtectorController {
             boolean isSuccess = dataService.processData(dataDto);
 
             if (isSuccess) {
+                System.out.println("보호자 등록 완료");
                 return ResponseEntity.ok(Map.of(
                         "message", "보호자 등록이 완료되었습니다.",
                         "success", true
                 ));
             } else {
+                System.out.println("보호자 등록 실패");
                 return ResponseEntity.badRequest().body(Map.of(
                         "message", "DB 서버 저장에 실패했습니다.",
                         "success", false
