@@ -29,22 +29,36 @@ public class DeviceControlController {
         if (request.getValue() != null) {
             commandData.put("value", request.getValue());
         }
-        
+
         switch (request.getTarget().toUpperCase()) {
-            case "LED1":
-            case "LED2":
-                mqttService.publish("mdp/control/house/esp32-led/event", commandData);
+            case "LIGHT": // 모든 LED 제어
+                mqttService.publish("mdp/control/house/esp32-All-led/event", commandData);
                 break;
-            case "GAS":
-            case "FAN":
+            case "LED1": // LED1
+                mqttService.publish("mdp/control/house/esp32-led1/event", commandData);
+                break;
+            case "LED2": // LED2
+
+                mqttService.publish("mdp/control/house/esp32-led2/event", commandData);
+                break;
+            case "EMERGENCY": // 긴급 차단 (가스+전등 차단)
+                mqttService.publish("mdp/control/house/esp32-EMERGENCY/event", commandData);
+                break;
+            case "GAS": // GAS
                 mqttService.publish("mdp/control/house/esp32-gas/event", commandData);
                 break;
-            case "INTRUSION":
-                mqttService.publish("mdp/control/house/laptop-cam/event", commandData);
+            case "FAN": // FAN
+                mqttService.publish("mdp/control/house/esp32-fan/event", commandData);
                 break;
-            case "OTP":
+
+            case "OTP": // DOORLOCK OTP
                 mqttService.publish("mdp/control/house/esp32-doorlock/event", commandData);
                 break;
+
+            case "MODE": // 침입자 모드 ON - OFF
+                mqttService.publish("mdp/control/house/laptop-mode/event", commandData);
+                break;
+
             default:
                 return ResponseEntity.badRequest().body("알 수 없는 타겟입니다: " + request.getTarget());
         }   

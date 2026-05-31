@@ -186,6 +186,7 @@ public class MqttService implements MqttCallback {
                 if (aiResult != null && aiResult.contains("detected=true")) {
 
                     System.out.println("[ALERT] AI 검증 완료 (위험 확정) 앱 알림 발송");
+
                     sendAlertToApp(analysisType, fullImageUrl, "AI 분석 결과, 위험이 확인됨");
 
                 } else {
