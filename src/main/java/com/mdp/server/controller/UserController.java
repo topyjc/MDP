@@ -60,7 +60,7 @@ public class UserController {
 
             DataDto requestDto = new DataDto();
             requestDto.setContent("plt");
-            requestDto.setTable_num("4");
+            requestDto.setTable_num("3");
             requestDto.setTimestamp(System.currentTimeMillis());
             requestDto.setData(loginData);
 
