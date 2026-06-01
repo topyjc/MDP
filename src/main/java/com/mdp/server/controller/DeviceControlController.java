@@ -38,9 +38,9 @@ public class DeviceControlController {
                 mqttService.publish("mdp/control/house/esp32-led1/event", commandData);
                 break;
             case "LED2": // LED2
-
                 mqttService.publish("mdp/control/house/esp32-led2/event", commandData);
                 break;
+
             case "EMERGENCY": // 긴급 차단 (가스+전등 차단)
                 mqttService.publish("mdp/control/house/esp32-EMERGENCY/event", commandData);
                 break;
