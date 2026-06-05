@@ -83,18 +83,18 @@ public class MediaEventHandler {
                 System.out.println("[INFO] 무시할만한 낮은 확률 (" + confidence + ") 처리 생략");
             }
 
-//            // 4. [비즈니스 로직] 위험 감지 시 가로등/화재 제어 명령 연동
-//            if (isDangerDetected) {
-//                // Case A: 소방차/구급차 등 긴급 차량 감지 시 -> 가로등 신호등을 파란불(GREEN)로 제어
-//                if (analysisType.contains("emergency") || "streetlamp".equals(teamId)) {
-//                    controlService.sendTrafficLightCommand(teamId, deviceName, "GREEN");
-//                }
-//
-//                // Case B: 화재 이미지 감지 시 -> LED 둘 다 점멸 제어
-//                if (analysisType.contains("fire")) {
-//                    controlService.sendLedBlinkCommand(teamId, deviceName);
-//                }
-//            }
+            // 4. [비즈니스 로직] 위험 감지 시 가로등/화재 제어 명령 연동
+            if (isDangerDetected) {
+                // Case A: 소방차/구급차 등 긴급 차량 감지 시 -> 가로등 신호등을 파란불(GREEN)로 제어
+                if (analysisType.contains("emergency") || "streetlamp".equals(teamId)) {
+                    controlService.sendTrafficLightCommand(teamId, deviceName, "GREEN");
+                }
+
+                // Case B: 화재 이미지 감지 시 -> LED 둘 다 점멸 제어
+                if (analysisType.contains("fire")) {
+                    controlService.sendLedBlinkCommand(teamId, deviceName);
+                }
+            }
 
         } catch (Exception e) {
             System.err.println("[ERROR] 미디어 파일 처리 오류");
