@@ -86,7 +86,7 @@ public class MediaEventHandler {
             // 4. [비즈니스 로직] 위험 감지 시 가로등/화재 제어 명령 연동
             if (isDangerDetected) {
                 // Case A: 소방차/구급차 등 긴급 차량 감지 시 -> 가로등 신호등을 파란불(GREEN)로 제어
-                if (analysisType.contains("emergency") || "streetlamp".equals(teamId)) {
+                if (analysisType.contains("emergency") || "streetlight".equals(teamId)) {
                     controlService.sendTrafficLightCommand(teamId, deviceName, "GREEN");
                 }
 

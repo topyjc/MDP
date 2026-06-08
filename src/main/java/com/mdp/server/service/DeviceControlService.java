@@ -12,7 +12,7 @@ public class DeviceControlService {
 
     private final MqttService mqttService;
 
-    // 순환 참조를 방지하기 위해 @Lazy를 사용 (MqttService와 서로 참조하기 때문)
+    // 순환 참조를 방지하기 위해 @Lazy를 사용
     public DeviceControlService(@Lazy MqttService mqttService) {
         this.mqttService = mqttService;
     }
@@ -23,7 +23,7 @@ public class DeviceControlService {
     public void sendTrafficLightCommand(String teamId, String deviceName, String action) {
         String topic = "mdp/control/" + teamId + "/" + deviceName;
         Map<String, Object> payload = createPayload("traffic_light", action);
-
+1
         mqttService.publish(topic, payload);
     }
 
