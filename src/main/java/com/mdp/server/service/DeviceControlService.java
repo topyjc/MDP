@@ -23,7 +23,7 @@ public class DeviceControlService {
     public void sendTrafficLightCommand(String teamId, String deviceName, String action) {
         String topic = "mdp/control/" + teamId + "/" + deviceName;
         Map<String, Object> payload = createPayload("traffic_light", action);
-1
+
         mqttService.publish(topic, payload);
     }
 
