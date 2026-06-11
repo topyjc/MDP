@@ -53,24 +53,6 @@ public class SensorEventHandler {
             );
             webSocketHandler.broadcast(sensorMessage);
 
-//            // 3. [비즈니스 로직] 가스 누출 감지 시 제어 명령 작동
-//            if ("gas".equals(dataDto.getContent())) {
-//                Map<String, Object> sensorData = dataDto.getData();
-//                Object gasValueObj = sensorData.get("value"); // ⚠️ 하드웨어가 보내는 키값("value" 등)에 맞추세요.
-//
-//                if (gasValueObj != null) {
-//                    double gasValue = Double.parseDouble(gasValueObj.toString());
-//
-//                    // 가스 누출 임계치 판단 (예: 50.0 초과 시 누출로 판단)
-//                    if (gasValue > 50.0) {
-//                        System.out.println("[위험] 가스 누출 수치 감지 (" + gasValue + ") -> 시스템 개입 시작");
-//
-//                        String teamId = extractTeamId(topic);
-//                        controlService.sendLedBlinkCommand(teamId, "esp32-led");
-//                    }
-//                }
-//            }
-
             System.out.println("[MQTT][EVENT] DB 저장 + 웹소켓 전송 완료");
         } catch (Exception e) {
             System.err.println("[ERROR] 일반 센서 처리 중 오류 발생");

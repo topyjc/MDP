@@ -38,7 +38,7 @@ public class MediaEventHandler {
         String[] topicParts = topic.split("/");
         if (topicParts.length < 6) return;
 
-        String teamId = topicParts[2];      // 조이름
+        String teamId = topicParts[2];      // 조 이름
         String deviceName = topicParts[3];  // 기기이름
         String fileName = topicParts[5];    // 파일명
 

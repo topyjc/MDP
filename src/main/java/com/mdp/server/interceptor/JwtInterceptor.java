@@ -26,11 +26,11 @@ public class JwtInterceptor implements HandlerInterceptor {
         String token = request.getHeader("Authorization");
 
         if (token != null && token.startsWith("Bearer ")) {
-            String jwt = token.substring(7); // "Bearer " 이후의 실제 토큰 문자열만 추출
+            String jwt = token.substring(7); // "Bearer " 뒤의 토큰 문자열만 추출
 
             // 토큰 유효 검사
             if (jwtUtil.validateToken(jwt)) {
-                // 유효하다면 토큰에서 userId를 뽑아내서 Request 객체에 담아둠
+                // 유효하다면 토큰에서 userId를 뽑아내서 Request 객체에 담기
                 request.setAttribute("userId", jwtUtil.extractUserId(jwt));
                 return true;
             }
