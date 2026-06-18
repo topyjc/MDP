@@ -85,9 +85,9 @@ public class MediaEventHandler {
 
             // 4. [비즈니스 로직] 스마트팀, 도로팀 제어
             if (isDangerDetected) {
-                // Case A: 소방차/구급차 등 긴급 차량 감지 시 -> 가로등 신호등을 파란불(GREEN)로 제어
+                // Case A: 소방차/구급차 등 긴급 차량 감지 시 -> 긴급 상황 전송
                 if (analysisType.contains("emergency") || "road".equals(teamId)) {
-                    controlService.sendTrafficLightCommand(teamId, deviceName, "GREEN");
+                    controlService.sendTrafficLightCommand(teamId, "emergency");
                 }
 
                 // Case B: 화재 이미지 감지 시 -> LED1, LED2 각각 BLINK-FIRE 전송

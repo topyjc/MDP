@@ -17,10 +17,10 @@ public class DeviceControlService {
     }
 
 
-     // 가로등팀: 긴급 차량 감지 시 신호등 제어 (기존 동일)
+     // 도로팀: 긴급 차량 감지 시 신호등 제어
 
-    public void sendTrafficLightCommand(String teamId, String deviceName, String action) {
-        String topic = "mdp/control/" + teamId + "/" + deviceName;
+    public void sendTrafficLightCommand(String teamId,  String action) {
+        String topic = "mdp/control/" + teamId + "/" + "esp8266-trafficLight" + "/" + "event";
         Map<String, Object> payload = createBasePayload("traffic_light", action, "");
         mqttService.publish(topic, payload);
     }
