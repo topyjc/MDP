@@ -44,7 +44,7 @@ public class SensorEventHandler {
             DataDto dataDto = mapToDataDto(payloadText);
             dataService.processData(dataDto);
 
-            // 2. 웹소켓 실시간 앱 브로드캐스트 * 웹은 풀링
+            // 2. 웹소켓 실시간 앱/웹 브로드캐스트
             SensorMessage sensorMessage = new SensorMessage(
                     dataDto.getContent(),
                     dataDto.getTable_num(),
@@ -53,16 +53,28 @@ public class SensorEventHandler {
             );
             webSocketHandler.broadcast(sensorMessage);
 
+            // 3. 스마트홈팀(house) 가스 누출(gasSw == 1) 체크 및 제어
+            if ("house".equals(dataDto.getContent())) {
+                Map<String, Object> sensorData = dataDto.getData();
+
+                if (sensorData != null && sensorData.containsKey("gasSw")) {
+                    Object gasSwVal = sensorData.get("gasSw");
+
+                    // 에러 방지 위해 문자열로 비교 (gasSw가 1인 경우)
+                    if (gasSwVal != null && "1".equals(String.valueOf(gasSwVal))) {
+                        System.out.println("스마트홈 가스 누출 발생 (gasSw = 1)");
+
+                        // DeviceControlService의 고정 라우팅 메서드 호출!
+                        controlService.sendGasAlertLeds();
+                    }
+                }
+            }
+
             System.out.println("[MQTT][EVENT] DB 저장 + 웹소켓 전송 완료");
         } catch (Exception e) {
             System.err.println("[ERROR] 일반 센서 처리 중 오류 발생");
             e.printStackTrace();
         }
-    }
-
-    private String extractTeamId(String topic) {
-        String[] parts = topic.split("/");
-        return parts.length >= 3 ? parts[2] : "unknown";
     }
 
     private DataDto mapToDataDto(String json) throws Exception {

@@ -86,13 +86,13 @@ public class MediaEventHandler {
             // 4. [비즈니스 로직] 스마트팀, 도로팀 제어
             if (isDangerDetected) {
                 // Case A: 소방차/구급차 등 긴급 차량 감지 시 -> 긴급 상황 전송
-                if (analysisType.contains("emergency") || "road".equals(teamId)) {
-                    controlService.sendTrafficLightCommand(teamId, "emergency");
+                if (analysisType.contains("emergency")) {
+                    controlService.sendTrafficLightCommand();
                 }
 
                 // Case B: 화재 이미지 감지 시 -> LED1, LED2 각각 BLINK-FIRE 전송
                 if (analysisType.contains("fire")) {
-                    controlService.sendFireAlertLeds(teamId, deviceName);
+                    controlService.sendFireAlertLeds();
                 }
             }
 
