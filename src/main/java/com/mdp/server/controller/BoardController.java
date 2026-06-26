@@ -95,9 +95,7 @@ public class BoardController {
             Map<String, Object> innerData = new HashMap<>();
             innerData.put("userId", userId);
             innerData.put("likes", likesCount);
-
-            // TODO: 웹 개발자와 협의 후 postId 매핑 주석 해제
-            // innerData.put("postId", id);
+             innerData.put("postId", id);
 
             requestDto.setData(innerData);
 
