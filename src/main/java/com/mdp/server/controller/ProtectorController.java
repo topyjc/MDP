@@ -47,14 +47,6 @@ public class ProtectorController {
                 return ResponseEntity.badRequest().body(Map.of("message", "본인을 피보호자로 등록할 수 없습니다."));
             }
 
-            // 4. DB 서버 검증: 피보호자 ID가 실제로 가입된 유저인지 확인
-            String checkUrl = dbServerUrl + "/data/check-user?userId=" + wardId;
-            ResponseEntity<Map> checkResponse = restTemplate.getForEntity(checkUrl, Map.class);
-
-            if (checkResponse.getStatusCode() == HttpStatus.NOT_FOUND) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "존재하지 않는 피보호자 ID입니다."));
-            }
-
             // 5. DB 서버 저장: DataService를 이용하여 전송
             DataDto dataDto = new DataDto();
             dataDto.setContent("plt");
