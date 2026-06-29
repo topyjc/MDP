@@ -27,7 +27,7 @@ public class DataService {
 
             if (responseBody != null && !responseBody.isBlank()) {
                 JsonNode root = objectMapper.readTree(responseBody);
-                
+
                 boolean isSuccess = root.path("data").path("success").asBoolean(false);
 
                 return isSuccess;
