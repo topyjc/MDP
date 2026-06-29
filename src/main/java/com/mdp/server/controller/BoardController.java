@@ -65,11 +65,8 @@ public class BoardController {
         }
     }
 
-    @PostMapping("/private/boards/{id}/like")
-    public ResponseEntity<?> handleBoardLike(
-            @PathVariable("id") String id,
-            @RequestBody Map<String, Object> requestData,
-            HttpServletRequest request) {
+    @PostMapping("/private/boards/like")
+    public ResponseEntity<?> handleBoardLike(@RequestBody Map<String, Object> requestData, HttpServletRequest request) {
         try {
             // 1. 로그인 유저 확인
             String userId = (String) request.getAttribute("userId");
@@ -77,7 +74,7 @@ public class BoardController {
                 return ResponseEntity.status(401).body(Map.of("message", "로그인 정보가 없습니다.", "success", false));
             }
 
-            // 2. 좋아요 개수(likes) 안전하게 추출
+            // 2. 요청 데이터에서 값 추출 (likes, title, content)
             Object rawLikes = requestData.get("likes");
             int likesCount = 0;
             if (rawLikes instanceof Number number) {
@@ -85,6 +82,10 @@ public class BoardController {
             } else if (rawLikes instanceof String str) {
                 likesCount = Integer.parseInt(str);
             }
+
+            // 안전하게 문자열로 변환하여 추출
+            String title = requestData.get("title") != null ? String.valueOf(requestData.get("title")) : "";
+            String content = requestData.get("content") != null ? String.valueOf(requestData.get("content")) : "";
 
             // 3. DB 전송용 데이터 세팅
             DataDto requestDto = new DataDto();
@@ -94,8 +95,9 @@ public class BoardController {
 
             Map<String, Object> innerData = new HashMap<>();
             innerData.put("userId", userId);
+            innerData.put("title", title);
+            innerData.put("content", content);
             innerData.put("likes", likesCount);
-             innerData.put("postId", id);
 
             requestDto.setData(innerData);
 
