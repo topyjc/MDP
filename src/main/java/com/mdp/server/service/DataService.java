@@ -25,6 +25,8 @@ public class DataService {
 
             String responseBody = dbServerClient.sendData(data);
 
+            System.out.println("[DB 응답 원본] : " + responseBody);
+
             if (responseBody != null && !responseBody.isBlank()) {
                 JsonNode root = objectMapper.readTree(responseBody);
 
