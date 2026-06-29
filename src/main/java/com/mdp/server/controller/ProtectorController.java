@@ -51,6 +51,7 @@ public class ProtectorController {
             DataDto dataDto = new DataDto();
             dataDto.setContent("plt");
             dataDto.setTable_num("4");
+            dataDto.setTimestamp(System.currentTimeMillis());
 
             // data 필드 맵핑
             Map<String, Object> innerData = new HashMap<>();
