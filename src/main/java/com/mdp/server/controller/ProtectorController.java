@@ -50,7 +50,7 @@ public class ProtectorController {
             // 5. DB 서버 저장: DataService를 이용하여 전송
             DataDto dataDto = new DataDto();
             dataDto.setContent("plt");
-            dataDto.setTable_num("0");
+            dataDto.setTable_num("4");
 
             // data 필드 맵핑
             Map<String, Object> innerData = new HashMap<>();
