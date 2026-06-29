@@ -25,15 +25,13 @@ public class DataService {
 
             String responseBody = dbServerClient.sendData(data);
 
-            System.out.println("[DB 응답 원본] : " + responseBody);
-
             if (responseBody != null && !responseBody.isBlank()) {
                 JsonNode root = objectMapper.readTree(responseBody);
+                
+                boolean isSuccess = root.path("data").path("success").asBoolean(false);
 
-                boolean isSuccess = root.path("data").path("data").path("success").asBoolean(false);
-
-                System.out.println(isSuccess);
                 return isSuccess;
+
             }
 
             return true;
