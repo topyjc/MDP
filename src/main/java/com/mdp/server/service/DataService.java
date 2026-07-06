@@ -6,6 +6,9 @@ import com.mdp.server.client.DbServerClient;
 import com.mdp.server.dto.DataDto;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @Service
 public class DataService {
 
@@ -41,6 +44,30 @@ public class DataService {
             e.printStackTrace();
             return false;
         }
+    }
+
+    // 로그인 전용: 성공 여부와 isAdmin 값을 Map으로 반환
+    public Map<String, Object> processLogin(DataDto data) {
+        Map<String, Object> resultMap = new HashMap<>();
+        resultMap.put("isSuccess", false);
+        resultMap.put("isAdmin", 0);
+
+        try {
+            String responseBody = dbServerClient.sendData(data);
+            if (responseBody != null && !responseBody.isBlank()) {
+                JsonNode root = objectMapper.readTree(responseBody);
+
+                // DB가 응답한 {"data": {"success": true, "isAdmin": 0}} 에서 파싱
+                boolean isSuccess = root.path("data").path("success").asBoolean(false);
+                int isAdmin = root.path("data").path("isAdmin").asInt(0);
+
+                resultMap.put("isSuccess", isSuccess);
+                resultMap.put("isAdmin", isAdmin);
+            }
+        } catch (Exception e) {
+            System.out.println("로그인 데이터 파싱 실패: " + e.getMessage());
+        }
+        return resultMap;
     }
 
     public DataDto fetchData(String content, String tableNum) {

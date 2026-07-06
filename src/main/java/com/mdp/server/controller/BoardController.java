@@ -90,7 +90,7 @@ public class BoardController {
             // 3. DB 전송용 데이터 세팅
             DataDto requestDto = new DataDto();
             requestDto.setContent("plt");
-            requestDto.setTable_num("1");
+            requestDto.setTable_num("5");
             requestDto.setTimestamp(System.currentTimeMillis());
 
             Map<String, Object> innerData = new HashMap<>();

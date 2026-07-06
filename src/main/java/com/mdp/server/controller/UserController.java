@@ -52,25 +52,21 @@ public class UserController {
             ));
         }
     }
-
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, Object> loginData) {
         try {
-            loginData.putIfAbsent("isAdmin", 0);
+            String userId = (String) loginData.get("userId");
 
             DataDto requestDto = new DataDto();
             requestDto.setContent("plt");
             requestDto.setTable_num("3");
             requestDto.setTimestamp(System.currentTimeMillis());
-            requestDto.setData(loginData);
+            requestDto.setData(loginData); // userId, password만
 
-            boolean isSuccess = dataService.processData(requestDto);
-            String userId = (String) loginData.get("userId");
+            Map<String, Object> loginResult = dataService.processLogin(requestDto);
+            boolean isSuccess = (boolean) loginResult.get("isSuccess");
 
-            int isAdmin = 0;
-            if (loginData.get("isAdmin") != null) {
-                isAdmin = Integer.parseInt(String.valueOf(loginData.get("isAdmin")));
-            }
+            int isAdmin = (int) loginResult.get("isAdmin");
 
             if (isSuccess) {
                 // JWT 토큰 발급
