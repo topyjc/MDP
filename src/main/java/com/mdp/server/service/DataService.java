@@ -60,7 +60,7 @@ public class DataService {
 
                 // DB가 응답한 {"data": {"success": true, "isAdmin": 0}} 에서 파싱
                 boolean isSuccess = root.path("data").path("success").asBoolean(false);
-                int isAdmin = root.path("data").path("isAdmin").asInt(0);
+                int isAdmin = root.path("data").path("is_admin").asInt(0);
 
                 resultMap.put("isSuccess", isSuccess);
                 resultMap.put("isAdmin", isAdmin);
