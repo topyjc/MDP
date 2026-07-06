@@ -56,6 +56,7 @@ public class DataService {
             String responseBody = dbServerClient.sendData(data);
             if (responseBody != null && !responseBody.isBlank()) {
                 JsonNode root = objectMapper.readTree(responseBody);
+                System.out.println("로그인 DB 응답: "+ responseBody);
 
                 // DB가 응답한 {"data": {"success": true, "isAdmin": 0}} 에서 파싱
                 boolean isSuccess = root.path("data").path("success").asBoolean(false);
