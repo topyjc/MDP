@@ -66,48 +66,53 @@ public class BoardController {
     }
 
     @PostMapping("/private/boards/like")
-    public ResponseEntity<?> handleBoardLike(@RequestBody Map<String, Object> requestData, HttpServletRequest request) {
+    public ResponseEntity<?> handleBoardLike(
+            @RequestBody Map<String, Object> requestData,
+            HttpServletRequest request) {
         try {
-            // 1. 로그인 유저 확인
+            // 1. 로그인 유저 확인 (보안 유지)
             String userId = (String) request.getAttribute("userId");
             if (userId == null) {
                 return ResponseEntity.status(401).body(Map.of("message", "로그인 정보가 없습니다.", "success", false));
             }
 
-            // 2. 요청 데이터에서 값 추출 (likes, title, content)
-            Object rawLikes = requestData.get("likes");
-            int likesCount = 0;
-            if (rawLikes instanceof Number number) {
-                likesCount = number.intValue();
-            } else if (rawLikes instanceof String str) {
-                likesCount = Integer.parseInt(str);
+            // 2. 앱/웹에서 보낸 postId 추출
+            Object rawPostId = requestData.get("postId");
+            if (rawPostId == null) {
+                return ResponseEntity.badRequest().body(Map.of("message", "게시글 ID(postId)가 누락되었습니다.", "success", false));
             }
 
-            // 안전하게 문자열로 변환하여 추출
-            String title = requestData.get("title") != null ? String.valueOf(requestData.get("title")) : "";
-            String content = requestData.get("content") != null ? String.valueOf(requestData.get("content")) : "";
+            int postId = 0;
+            if (rawPostId instanceof Number number) {
+                postId = number.intValue();
+            } else if (rawPostId instanceof String str) {
+                postId = Integer.parseInt(str);
+            }
 
-            // 3. DB 전송용 데이터 세팅
+            // 3. DB 전송용 데이터 세팅 (table_num: 5, data: { postId })
             DataDto requestDto = new DataDto();
             requestDto.setContent("plt");
             requestDto.setTable_num("5");
             requestDto.setTimestamp(System.currentTimeMillis());
 
             Map<String, Object> innerData = new HashMap<>();
-            innerData.put("userId", userId);
-            innerData.put("title", title);
-            innerData.put("content", content);
-            innerData.put("likes", likesCount);
+            innerData.put("postId", postId);
 
             requestDto.setData(innerData);
 
-            // 4. DataService를 통해 DB 전송
+            // 4. DataService를 통해 DB 전송 (DB 서버가 받으면 +1 처리)
             boolean isSuccess = dataService.processData(requestDto);
 
             if (isSuccess) {
-                return ResponseEntity.ok(Map.of("message", "좋아요 정보가 성공적으로 반영되었습니다.", "success", true));
+                return ResponseEntity.ok(Map.of(
+                        "message", "좋아요가 성공적으로 반영되었습니다.",
+                        "success", true
+                ));
             } else {
-                return ResponseEntity.badRequest().body(Map.of("message", "좋아요 반영에 실패했습니다.", "success", false));
+                return ResponseEntity.badRequest().body(Map.of(
+                        "message", "좋아요 반영에 실패했습니다.",
+                        "success", false
+                ));
             }
 
         } catch (Exception e) {
