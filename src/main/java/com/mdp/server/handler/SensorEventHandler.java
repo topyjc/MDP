@@ -7,6 +7,7 @@ import com.mdp.server.dto.SensorMessage;
 import com.mdp.server.service.DataService;
 import com.mdp.server.service.DeviceControlService;
 import com.mdp.server.websocket.WebSocketHandler;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
@@ -14,7 +15,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 
 @Component
 public class SensorEventHandler {
@@ -23,22 +24,27 @@ public class SensorEventHandler {
     private final DeviceControlService controlService;
     private final WebSocketHandler webSocketHandler;
     private final ObjectMapper objectMapper;
+    private final Executor mqttEventExecutor;
 
     public SensorEventHandler(
             DataService dataService,
             DeviceControlService controlService,
             WebSocketHandler webSocketHandler,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            @Qualifier("mqttEventExecutor") Executor mqttEventExecutor
     ) {
         this.dataService = dataService;
         this.controlService = controlService;
         this.webSocketHandler = webSocketHandler;
         this.objectMapper = objectMapper;
+        this.mqttEventExecutor = mqttEventExecutor;
     }
 
     public void handle(String topic, byte[] payload) {
-        // 수신 스레드가 블로킹되지 않도록 모든 작업을 비동기(Async) 스레드로 진행
-        CompletableFuture.runAsync(() -> {
+        // 수신 스레드가 블로킹되지 않도록 모든 작업을 전용 스레드풀로 위임
+        // (ForkJoinPool.commonPool 대신 mediaEventHandler와 동일한 bounded pool 공유:
+        //  블로킹 I/O를 commonPool에 태우지 않기 위함 + 리소스 상한 관리 일원화)
+        mqttEventExecutor.execute(() -> {
             try {
                 String payloadText = new String(payload, StandardCharsets.UTF_8);
                 System.out.println("[MQTT][EVENT] 일반 센서 수신: " + payloadText);

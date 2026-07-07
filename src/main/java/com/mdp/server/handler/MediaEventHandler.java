@@ -6,10 +6,12 @@ import com.mdp.server.client.AiServerClient;
 import com.mdp.server.client.MediaServerClient;
 import com.mdp.server.service.DeviceControlService;
 import com.mdp.server.websocket.WebSocketHandler;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Executor;
 
 @Component
 public class MediaEventHandler {
@@ -19,22 +21,33 @@ public class MediaEventHandler {
     private final DeviceControlService controlService;
     private final WebSocketHandler webSocketHandler;
     private final ObjectMapper objectMapper;
+    private final Executor mqttEventExecutor;
 
     public MediaEventHandler(
             MediaServerClient mediaServerClient,
             AiServerClient aiServerClient,
             DeviceControlService controlService,
             WebSocketHandler webSocketHandler,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            @Qualifier("mqttEventExecutor") Executor mqttEventExecutor
     ) {
         this.mediaServerClient = mediaServerClient;
         this.aiServerClient = aiServerClient;
         this.controlService = controlService;
         this.webSocketHandler = webSocketHandler;
         this.objectMapper = objectMapper;
+        this.mqttEventExecutor = mqttEventExecutor;
     }
 
+    /**
+     * MQTT(Paho) 콜백 스레드를 절대 블로킹하지 않도록,
+     * 실제 처리(이미지 업로드 + AI 재검증 + 제어 명령)는 전용 executor에서 수행한다.
+     */
     public void handle(String topic, byte[] payload) {
+        mqttEventExecutor.execute(() -> process(topic, payload));
+    }
+
+    private void process(String topic, byte[] payload) {
         String[] topicParts = topic.split("/");
         if (topicParts.length < 6) return;
 
