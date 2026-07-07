@@ -23,7 +23,7 @@ public class DataController {
             @PathVariable String content,
             @PathVariable String tableNum) {
 
-        System.out.println("[API request connect] group: " + content + ", type: " + tableNum);
+//        System.out.println("[API request connect] group: " + content + ", type: " + tableNum);
 
         DataDto result = dataService.fetchData(content, tableNum);
 
