@@ -120,4 +120,70 @@ public class BoardController {
             return ResponseEntity.internalServerError().body(Map.of("message", "서버 오류"));
         }
     }
+
+
+    // 게시글 수정
+    @PostMapping("/private/boards/update")
+    public ResponseEntity<?> updateBoard(
+            @RequestBody Map<String, Object> requestData,
+            HttpServletRequest request) {
+        try {
+            // 1. 로그인 유저 검증 (토큰에서 내 아이디 추출)
+            String loginUserId = (String) request.getAttribute("userId");
+            if (loginUserId == null) {
+                return ResponseEntity.status(401).body(Map.of(
+                        "message", "로그인 정보가 없습니다.",
+                        "success", false
+                ));
+            }
+
+            // 2. 앱/웹에서 보낸 필수 데이터 추출 (postId, title, content)
+            Object rawPostId = requestData.get("postId");
+            String title = (String) requestData.get("title");
+            String content = (String) requestData.get("content");
+
+            if (rawPostId == null || title == null || content == null) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "message", "필수 데이터(postId, title, content)가 누락되었습니다.",
+                        "success", false
+                ));
+            }
+
+            String postId = String.valueOf(rawPostId);
+
+            DataDto requestDto = new DataDto();
+            requestDto.setContent("plt");
+            requestDto.setTable_num("6");
+            requestDto.setTimestamp(System.currentTimeMillis());
+
+            // 내부 data 맵 조립
+            Map<String, Object> innerData = new HashMap<>();
+            innerData.put("userId", loginUserId);
+            innerData.put("postId", postId);
+            innerData.put("title", title);
+            innerData.put("content", content);
+
+            requestDto.setData(innerData);
+            
+            boolean isSuccess = dataService.processData(requestDto);
+
+            if (isSuccess) {
+                return ResponseEntity.ok(Map.of(
+                        "message", "게시글이 성공적으로 수정되었습니다.",
+                        "success", true
+                ));
+            } else {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "message", "게시글 수정에 실패했습니다.",
+                        "success", false
+                ));
+            }
+
+        } catch (Exception e) {
+            System.out.println("게시글 수정 실패 : " + e.getMessage());
+            return ResponseEntity.internalServerError().body(Map.of(
+                    "message", "서버 오류가 발생했습니다."
+            ));
+        }
+    }
 }
