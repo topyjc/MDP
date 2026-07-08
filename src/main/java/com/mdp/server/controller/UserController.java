@@ -3,6 +3,7 @@ package com.mdp.server.controller;
 import com.mdp.server.dto.DataDto;
 import com.mdp.server.service.DataService;
 import com.mdp.server.util.JwtUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -88,6 +89,43 @@ public class UserController {
             System.out.println("로그인 통신 실패 : " + e.getMessage());
             return ResponseEntity.internalServerError().body(Map.of(
                     "message", "서버 통신 오류가 발생했습니다."
+            ));
+        }
+    }
+ 
+    @GetMapping("/private/guardians/status-check")
+    public ResponseEntity<?> checkUserMatchingStatus(HttpServletRequest request) {
+        try {
+
+            String userId = (String) request.getAttribute("userId");
+            if (userId == null) {
+                return ResponseEntity.status(401).body(Map.of(
+                        "success", false,
+                        "message", "로그인 정보가 없습니다."
+                ));
+            }
+
+            DataDto requestDto = new DataDto();
+            requestDto.setContent("plt");
+            requestDto.setTable_num("8");
+            requestDto.setTimestamp(System.currentTimeMillis());
+            requestDto.setData(Map.of("userId", userId));
+
+            Map<String, Object> extractedMessage = dataService.extractMessageFromTable8(requestDto);
+
+            if (extractedMessage == null || extractedMessage.isEmpty()) {
+                return ResponseEntity.ok(Map.of(
+                        "code", "0",
+                        "msg", "조회된 매칭 데이터가 없습니다."
+                ));
+            }
+
+            return ResponseEntity.ok(extractedMessage);
+
+        } catch (Exception e) {
+            System.out.println("매칭 상태 조회 실패 : " + e.getMessage());
+            return ResponseEntity.internalServerError().body(Map.of(
+                    "message", "서버 오류가 발생했습니다."
             ));
         }
     }
