@@ -80,6 +80,8 @@ public class DataService {
             // 1. DB 서버로 요청 전송 및 응답 수신
             String responseBody = dbServerClient.sendData(data);
 
+            System.out.println(responseBody);
+
             if (responseBody != null && !responseBody.isBlank()) {
                 JsonNode root = objectMapper.readTree(responseBody);
 
