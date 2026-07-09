@@ -55,6 +55,8 @@ public class DataService {
 
         try {
             String responseBody = dbServerClient.sendData(data);
+            System.out.println(responseBody);
+            
             if (responseBody != null && !responseBody.isBlank()) {
                 JsonNode root = objectMapper.readTree(responseBody);
                 System.out.println("로그인 DB 응답: "+ responseBody);
