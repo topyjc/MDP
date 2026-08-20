@@ -44,4 +44,19 @@ public class DbServerClient {
             return null;
         }
     }
+
+    // 💡 피보호자 ID로 보호자 ID를 조회하는 메서드
+    public String getGuardianId(String wardId) {
+        try {
+            // DB 서버의 보호자 조회 API 주소 (DB 팀과 맞춘 URL로 수정)
+            String url = dbServerUrl + "/api/relation/guardian?wardId=" + wardId;
+
+            // 응답으로 보호자의 userId(String)를 바로 반환한다고 가정
+            String guardianId = restTemplate.getForObject(url, String.class);
+            return guardianId;
+        } catch (Exception e) {
+            System.err.println("[ERROR] 보호자 정보 조회 실패: " + e.getMessage());
+            return null;
+        }
+    }
 }
