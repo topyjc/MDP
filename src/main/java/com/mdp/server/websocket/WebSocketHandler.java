@@ -44,6 +44,8 @@ public class WebSocketHandler extends TextWebSocketHandler {
             // 프론트엔드가 보낸 JSON 메시지 파싱
             JsonNode node = objectMapper.readTree(message.getPayload());
 
+            System.out.println("웹소캣 수신 : " + node);
+
             // 💡 앱에서 로그인을 성공하고 {"type": "REGISTER", "userId": "아이디"} 를 보냈을 때
             if (node.has("type") && "REGISTER".equals(node.get("type").asText()) && node.has("userId")) {
                 String userId = node.get("userId").asText();
