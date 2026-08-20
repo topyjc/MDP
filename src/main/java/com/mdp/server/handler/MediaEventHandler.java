@@ -78,7 +78,7 @@ public class MediaEventHandler {
             // 2. 확률 기반 분기 처리
             if (confidence >= 0.9) {
                 System.out.println("[ALERT] 고확률 상황 (" + confidence + ") 즉시 상황 전개");
-                sendAlertToApp(analysisType, fullImageUrl, "실시간 위험 감지");
+                sendAlertToApp(teamId, analysisType, fullImageUrl, "실시간 위험 감지");
                 isDangerDetected = true;
 
             } else if (confidence >= 0.5) {
@@ -87,7 +87,7 @@ public class MediaEventHandler {
 
                 if (aiResult != null && aiResult.contains("detected=true")) {
                     System.out.println("[ALERT] AI가 위험 상황 최종 확정함");
-                    sendAlertToApp(analysisType, fullImageUrl, "AI 분석 결과, 위험 상황 확정");
+                    sendAlertToApp(teamId, analysisType, fullImageUrl, "AI 분석 결과, 위험 상황 확정");
                     isDangerDetected = true;
                 } else {
                     System.out.println("[SAFE] AI 검증 결과: 정상(오탐)으로 판단됨");
@@ -115,7 +115,11 @@ public class MediaEventHandler {
         }
     }
 
-    private void sendAlertToApp(String type, String url, String message) {
+    private void sendAlertToApp(String teamId, String type, String url, String message) {
+        if (!"house".equals(teamId)) {
+            return;
+        }
+
         Map<String, Object> alert = new HashMap<>();
         alert.put("type", type.contains("fire") ? "FIRE" : "INTRUSION");
         alert.put("imageUrl", url);
