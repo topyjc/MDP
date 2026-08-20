@@ -86,22 +86,30 @@ public class MqttService implements MqttCallback {
     public void messageArrived(String topic, MqttMessage message) throws Exception {
         byte[] payload = message.getPayload();
 
-        // 💡 오직 물건(토픽)을 확인하고 3개의 전담 핸들러 부서로 토스만 담당합니다!
         if (topic.contains("media")) {
-            // 1. 카메라 이미지 데이터 부서
             mediaEventHandler.handle(topic, payload);
 
         } else if (topic.contains("cty") || topic.contains("streetlight")) {
-            // 2. 피보호자 긴급 상황 부서 (예: 토픽이 "plt/ward/emergency" 인 경우)
-            // byte[] 를 String 으로 변환해서 넘겨줍니다.
             JsonNode jsonNode = objectMapper.readTree(payload);
-            String tableNum = jsonNode.get("table_num").asText();
-            if (tableNum.contains("숫자1") || tableNum.contains("숫자2")) {
+            String tableNum = jsonNode.path("table_num").asText("");
+
+            // 1. 시골팀(cty) 이면서 테이블 번호가 "2" 또는 "3" 인가?
+            boolean isCtyEmergency = topic.contains("cty") && (tableNum.equals("2") || tableNum.equals("3"));
+
+            // 2. 가로등팀(streetlight) 이면서 테이블 번호가 "0" 인가?
+            boolean isStreetlightEmergency = topic.contains("streetlight") && tableNum.equals("0");
+            // ------------------------------------------
+
+            if (isCtyEmergency || isStreetlightEmergency) {
                 String payloadStr = new String(payload);
                 wardEventHandler.processEmergency(payloadStr);
+            } else {
+                // 조건에 안 맞으면(일반 데이터면) 기존 센서 핸들러로 전달
+                sensorEventHandler.handle(topic, payload);
             }
+
         } else {
-            // 3. 그 외 일반 센서 (가로등, 미세먼지 등) 부서
+            // 3. 그 외 아예 다른 토픽인 경우 (일반 센서 부서)
             sensorEventHandler.handle(topic, payload);
         }
     }
