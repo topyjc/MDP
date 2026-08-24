@@ -7,6 +7,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.ArrayList;
+import java.util.List;
 
 @Component
 public class DbServerClient {
@@ -48,39 +50,43 @@ public class DbServerClient {
         }
     }
 
-    // 💡 피보호자 ID로 보호자 ID를 조회하는 메서드
-    public String getGuardianId(String wardId) {
+    public List<String> getGuardianIds(String wardId) {
+        List<String> guardianIds = new ArrayList<>();
+
         try {
             String url = dbServerUrl + "/api/relation/guardian?wardId=" + wardId;
 
-            // 1. DB 서버의 응답을 일단 String 형태의 JSON으로 받습니다.
+            // 1. DB 서버 응답 수신
             String responseJson = restTemplate.getForObject(url, String.class);
 
             if (responseJson == null || responseJson.trim().isEmpty()) {
-                return null;
+                return guardianIds; // 빈 리스트 반환
             }
 
-            // 2. ObjectMapper를 통해 JSON 상자를 엽니다.
+            // 2. JSON 파싱
             JsonNode rootNode = objectMapper.readTree(responseJson);
-
-            // 3. "success" 키의 값을 확인합니다. (없으면 기본값 false)
             boolean isSuccess = rootNode.path("success").asBoolean(false);
 
-            // 4. 성공 시와 실패 시 로직 분기
+            // 3. 성공 시 guardianIds 배열 순회
             if (isSuccess) {
-                String guardianId = rootNode.path("guardianId").asText();
-                System.out.println("[INFO] 보호자 조회 성공! (" + wardId + " -> " + guardianId + ")");
-                return guardianId;
+                JsonNode arrayNode = rootNode.path("guardianIds");
+
+                if (arrayNode.isArray()) {
+                    for (JsonNode node : arrayNode) {
+                        guardianIds.add(node.asText()); // ["csp", "user456"] 등의 원소들을 리스트에 추가
+                    }
+                }
+                System.out.println("[INFO] 보호자 리스트 조회 성공! (" + wardId + " -> " + guardianIds + ")");
+
             } else {
-                // 실패 시 DB 서버가 보내준 message를 로그로 남깁니다.
                 String message = rootNode.path("message").asText("이유 알 수 없음");
                 System.out.println("[INFO] 보호자 조회 실패 (" + wardId + "): " + message);
-                return null; // 실패했으므로 null 반환 (웹소켓 알림이 가지 않음)
             }
 
         } catch (Exception e) {
-            System.err.println("[ERROR] 보호자 정보 조회 중 네트워크 또는 파싱 예외 발생: " + e.getMessage());
-            return null;
+            System.err.println("[ERROR] 보호자 정보 조회 중 예외 발생: " + e.getMessage());
         }
+
+        return guardianIds; // 보호자 ID들의 리스트 반환
     }
 }

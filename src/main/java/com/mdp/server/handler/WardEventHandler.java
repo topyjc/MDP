@@ -7,6 +7,7 @@ import com.mdp.server.websocket.WebSocketHandler;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Component
@@ -51,12 +52,12 @@ public class WardEventHandler {
                 eventTitle = "피보호자 긴급 상황 발생";
             }
 
-            // 4. DB 서버에서 보호자 ID 조회 (아까 수정한 메서드 호출)
-            String guardianId = dbServerClient.getGuardianId(wardId);
+            // 4. DB 서버에서 보호자 ID 리스트 조회
+            List<String> guardianIds = dbServerClient.getGuardianIds(wardId);
 
-            // 5. 보호자가 존재하면 1:1 타겟팅 웹소켓 알림 전송
-            if (guardianId != null && !guardianId.isEmpty()) {
-                System.out.println("[ALERT] 피보호자(" + wardId + ") 위험 감지 -> 보호자(" + guardianId + ")에게 알림 전송");
+            // 5. 보호자가 1명 이상 존재하면 등록된 모든 보호자에게 1:1 알림 전송
+            if (guardianIds != null && !guardianIds.isEmpty()) {
+                System.out.println("[ALERT] 피보호자(" + wardId + ") 위험 감지 -> 보호자 목록(" + guardianIds + ")에게 알림 전송");
 
                 Map<String, Object> alert = new HashMap<>();
                 alert.put("type", "WARD_EMERGENCY");
@@ -66,8 +67,14 @@ public class WardEventHandler {
                 alert.put("message", "피보호자(" + wardId + ")님에게 [" + eventTitle + "]가 발생했습니다. (위치: " + location + ")");
                 alert.put("timestamp", System.currentTimeMillis());
 
-                // 보호자에게 1:1 전송
-                webSocketHandler.sendToSpecificUser(guardianId, alert);
+                // 💡 [핵심] 모든 보호자에게 각각 웹소켓 알림 전송
+                for (String guardianId : guardianIds) {
+                    webSocketHandler.sendToSpecificUser(guardianId, alert);
+
+                    // 만약 웹(SSE) 푸시도 적용하셨다면 아래 줄도 함께 돌려줍니다.
+                    // notificationController.sendToSpecificUser(guardianId, alert);
+                }
+
             } else {
                 System.out.println("[INFO] " + wardId + "에 매핑된 보호자가 없어 알림을 보낼 수 없습니다.");
             }
