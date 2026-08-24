@@ -100,6 +100,8 @@ public class MqttService implements MqttCallback {
             boolean isStreetlightEmergency = topic.contains("streetlight") && tableNum.equals("0");
             // ------------------------------------------
 
+            System.out.println(isCtyEmergency);
+
             if (isCtyEmergency || isStreetlightEmergency) {
                 String payloadStr = new String(payload);
                 wardEventHandler.processEmergency(payloadStr);
