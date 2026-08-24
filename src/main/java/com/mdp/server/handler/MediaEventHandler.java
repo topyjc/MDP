@@ -3,16 +3,14 @@ package com.mdp.server.handler;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mdp.server.client.AiServerClient;
-import com.mdp.server.client.DbServerClient; // 💡 DB 전송을 위해 추가
 import com.mdp.server.client.MediaServerClient;
-import com.mdp.server.dto.DataDto;
 import com.mdp.server.service.DeviceControlService;
+import com.mdp.server.mqtt.MqttService; // 💡 MqttService 임포트
+import org.springframework.context.annotation.Lazy;
 import com.mdp.server.websocket.WebSocketHandler;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Executor;
@@ -22,8 +20,8 @@ public class MediaEventHandler {
 
     private final MediaServerClient mediaServerClient;
     private final AiServerClient aiServerClient;
-    private final DbServerClient dbServerClient; // 💡 추가됨
     private final DeviceControlService controlService;
+    private final  MqttService mqttService; // 💡 1. MqttService 필드 추가
     private final WebSocketHandler webSocketHandler;
     private final ObjectMapper objectMapper;
     private final Executor mqttEventExecutor;
@@ -31,16 +29,16 @@ public class MediaEventHandler {
     public MediaEventHandler(
             MediaServerClient mediaServerClient,
             AiServerClient aiServerClient,
-            DbServerClient dbServerClient, // 💡 생성자 주입 추가
             DeviceControlService controlService,
+            @Lazy MqttService mqttService, // 💡 2. 생성자 주입 추가
             WebSocketHandler webSocketHandler,
             ObjectMapper objectMapper,
             @Qualifier("mqttEventExecutor") Executor mqttEventExecutor
     ) {
         this.mediaServerClient = mediaServerClient;
         this.aiServerClient = aiServerClient;
-        this.dbServerClient = dbServerClient;
         this.controlService = controlService;
+        this.mqttService = mqttService;
         this.webSocketHandler = webSocketHandler;
         this.objectMapper = objectMapper;
         this.mqttEventExecutor = mqttEventExecutor;
@@ -54,14 +52,14 @@ public class MediaEventHandler {
         String[] topicParts = topic.split("/");
         if (topicParts.length < 6) return;
 
-        String teamId = topicParts[2];      // 조 이름 (예: "cty", "house")
-        String deviceName = topicParts[3];  // 기기이름
-        String fileName = topicParts[5];    // 파일명
+        String teamId = topicParts[2];      // 예: "cty"
+        String deviceName = topicParts[3];  // 예: "laptop"
+        String fileName = topicParts[5];
 
         String[] fileParts = fileName.split("-");
         if (fileParts.length < 3) return;
 
-        String analysisType = fileParts[1]; // "fire_image_detection" 등
+        String analysisType = fileParts[1];
         double confidence = 0.0;
         try {
             confidence = Double.parseDouble(fileParts[2]);
@@ -92,27 +90,22 @@ public class MediaEventHandler {
                     System.out.println("[ALERT] AI가 위험 상황 최종 확정함");
                     sendAlertToApp(teamId, analysisType, fullImageUrl, "AI 분석 결과, 위험 상황 확정");
                     isDangerDetected = true;
-                } else {
-                    System.out.println("[SAFE] AI 검증 결과: 정상(오탐)으로 판단됨");
                 }
             }
 
-            // 4. [비즈니스 로직] 제어 및 추가 연동
+            // 3. 제어 및 추가 연동
             if (isDangerDetected) {
-
-                // Case A: 소방차/구급차 등 긴급 차량 감지 시
                 if (analysisType.contains("emergency")) {
                     controlService.sendTrafficLightCommand();
                 }
 
-                // Case B: 화재 이미지 감지 시 (공통 제어)
                 if (analysisType.contains("fire")) {
                     controlService.sendFireAlertLeds();
                 }
 
-                // 💡 [새로 추가된 로직] Case C: 시골팀(cty) 화재 감지 시 JSON 생성 및 동시 전송
+                // 시골팀(cty) 화재 감지 시 MqttService를 통해 기기로 이벤트 전송
                 if ("cty".equals(teamId) && analysisType.contains("fire")) {
-                    sendCtyFireData(fullImageUrl); // 코드가 길어지지 않게 별도 메서드로 분리
+                    sendFireEventToDevice(teamId, deviceName);
                 }
             }
 
@@ -121,41 +114,26 @@ public class MediaEventHandler {
             e.printStackTrace();
         }
     }
-    // 💡 시골팀(cty) 화재 시 DB 및 웹소켓 전송을 담당하는 새 메서드
-    private void sendCtyFireData(String fullImageUrl) {
 
-        // 1. 개발자님이 만든 DataDto 객체 생성 및 기본 세팅
-        DataDto dataDto = new DataDto();
-        dataDto.setContent("cty");
-        dataDto.setTable_num("1");
+    // 💡 MqttService의 publish 메서드를 직접 사용하는 방식
+    private void sendFireEventToDevice(String teamId, String deviceName) {
+        String topic = String.format("mdp/control/%s/%s/event", teamId, deviceName);
 
-        // DTO의 timestamp 타입이 Long이므로, 현재 시간을 밀리초로 변환하여 삽입
-        dataDto.setTimestamp(System.currentTimeMillis());
-
-        // 2. 내부 data 객체(Map) 생성
-        Map<String, Object> innerData = new HashMap<>();
-        innerData.put("location", "강원 강릉시");
-        // 💡 필요하다면 여기에 사진 URL도 추가로 담아줄 수 있습니다.
-        // innerData.put("imageUrl", fullImageUrl);
-
-        dataDto.setData(innerData);
+        // 1. Map 객체 생성
+        Map<String, String> payloadMap = new HashMap<>();
+        payloadMap.put("action", "fire_detected");
+        payloadMap.put("value", "");
 
         try {
-            // 3. 웹소켓으로 앱(전체)에 동일한 DataDto 포맷 그대로 브로드캐스트
-            // WebSocketHandler의 ObjectMapper가 알아서 DataDto를 JSON으로 예쁘게 바꿔줍니다.
-            webSocketHandler.broadcast(dataDto);
-            System.out.println("[INFO] 시골팀 화재 데이터를 웹소켓으로 브로드캐스트 했습니다.");
+            // 2. objectMapper로 변환하지 않고, Map 객체를 '그대로' MqttService에 전달!
+            mqttService.publish(topic, payloadMap);
 
-            // 4. DB 서버로 데이터 전송 (작성해주신 sendData 메서드 활용!)
-            dbServerClient.sendData(dataDto);
-            System.out.println("[INFO] 시골팀 화재 데이터를 DB 서버로 전송했습니다.");
-
+            System.out.println("[INFO] MqttService로 화재 감지 이벤트 발행 완료. Topic: " + topic);
         } catch (Exception e) {
-            System.err.println("[ERROR] 시골팀 데이터 전송 중 오류 발생: " + e.getMessage());
+            System.err.println("[ERROR] MqttService 발행 실패: " + e.getMessage());
         }
     }
 
-    // 스마트홈(house) 전용 기존 앱 알림
     private void sendAlertToApp(String teamId, String type, String url, String message) {
         if (!"house".equals(teamId)) {
             return;

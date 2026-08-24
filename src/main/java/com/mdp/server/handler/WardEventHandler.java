@@ -3,8 +3,10 @@ package com.mdp.server.handler;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mdp.server.client.DbServerClient;
+import com.mdp.server.service.SseNotificationService;
 import com.mdp.server.websocket.WebSocketHandler;
 import org.springframework.stereotype.Component;
+import com.mdp.server.service.SseNotificationService;
 
 import java.util.HashMap;
 import java.util.List;
@@ -16,11 +18,13 @@ public class WardEventHandler {
     private final DbServerClient dbServerClient;
     private final WebSocketHandler webSocketHandler;
     private final ObjectMapper objectMapper;
+    private final SseNotificationService sseNotificationService;
 
-    public WardEventHandler(DbServerClient dbServerClient, WebSocketHandler webSocketHandler, ObjectMapper objectMapper) {
+    public WardEventHandler(DbServerClient dbServerClient, WebSocketHandler webSocketHandler, ObjectMapper objectMapper,SseNotificationService sseNotificationService) {
         this.dbServerClient = dbServerClient;
         this.webSocketHandler = webSocketHandler;
         this.objectMapper = objectMapper;
+        this.sseNotificationService = sseNotificationService;
     }
 
     public void processEmergency(String payload) {
@@ -69,10 +73,12 @@ public class WardEventHandler {
 
                 // 💡 [핵심] 모든 보호자에게 각각 웹소켓 알림 전송
                 for (String guardianId : guardianIds) {
+
+                    // 1) 앱(WebSocket) 켜져 있으면 앱으로 1:1 푸시
                     webSocketHandler.sendToSpecificUser(guardianId, alert);
 
-                    // 만약 웹(SSE) 푸시도 적용하셨다면 아래 줄도 함께 돌려줍니다.
-                    // notificationController.sendToSpecificUser(guardianId, alert);
+                    // 2) 웹(HTTP SSE) 켜져 있으면 웹으로 1:1 푸시
+                    sseNotificationService.sendToSpecificUser(guardianId, alert);
                 }
 
             } else {
