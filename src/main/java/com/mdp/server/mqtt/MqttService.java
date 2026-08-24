@@ -112,6 +112,7 @@ public class MqttService implements MqttCallback {
 
         } else {
             // 3. 그 외 아예 다른 토픽인 경우 (일반 센서 부서)
+            System.out.println("일반 센서");
             sensorEventHandler.handle(topic, payload);
         }
     }
