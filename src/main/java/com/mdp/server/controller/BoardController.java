@@ -24,12 +24,15 @@ public class BoardController {
         try {
             DataDto responseDto = dataService.fetchData("plt", "1");
 
+            // 💡 [디버깅 Log] 목록 조회 성공
+            System.out.println("[SUCCESS] 게시판 목록 조회 성공! 수신된 데이터: " + responseDto.getData());
+
             return ResponseEntity.ok(Map.of(
                     "message", "게시판 목록 조회 성공",
                     "data", responseDto.getData()
             ));
         } catch (Exception e) {
-            System.out.println("게시판 조회 실패 : " + e.getMessage());
+            System.out.println("[ERROR] 게시판 조회 실패 : " + e.getMessage());
             return ResponseEntity.internalServerError().body(Map.of("message", "조회 오류"));
         }
     }
@@ -38,8 +41,8 @@ public class BoardController {
     public ResponseEntity<?> createBoard(@RequestBody Map<String, Object> boardData, HttpServletRequest request) {
         try {
             String userId = (String) request.getAttribute("userId");
-            System.out.println("유저 아이디 " + userId);
             if (userId == null) {
+                System.out.println("[FAIL] 게시글 작성 실패: 인증 정보(userId) 없음");
                 return ResponseEntity.status(401).body(Map.of("message", "로그인 정보가 없습니다."));
             }
 
@@ -54,13 +57,16 @@ public class BoardController {
             boolean isSuccess = dataService.processData(requestDto);
 
             if (isSuccess) {
+                // 💡 [디버깅 Log] 게시글 작성 성공
+                System.out.println("[SUCCESS] 게시글 작성 성공! 작성자: " + userId + " | Payload: " + boardData);
                 return ResponseEntity.ok(Map.of("message", "게시글이 성공적으로 작성되었습니다.", "success", true));
             } else {
+                System.out.println("[FAIL] 게시글 작성 DB 반환 실패 (isSuccess=false) | 작성자: " + userId);
                 return ResponseEntity.badRequest().body(Map.of("message", "게시글 작성에 실패했습니다.", "success", false));
             }
 
         } catch (Exception e) {
-            System.out.println("게시글 작성 실패 : " + e.getMessage());
+            System.out.println("[ERROR] 게시글 작성 예외 발생 : " + e.getMessage());
             return ResponseEntity.internalServerError().body(Map.of("message", "서버 오류"));
         }
     }
@@ -70,15 +76,15 @@ public class BoardController {
             @RequestBody Map<String, Object> requestData,
             HttpServletRequest request) {
         try {
-            // 1. 로그인 유저 확인 (보안 유지)
             String userId = (String) request.getAttribute("userId");
             if (userId == null) {
+                System.out.println("[FAIL] 좋아요 실패: 인증 정보(userId) 없음");
                 return ResponseEntity.status(401).body(Map.of("message", "로그인 정보가 없습니다.", "success", false));
             }
 
-            // 2. 앱/웹에서 보낸 postId 추출
             Object rawPostId = requestData.get("postId");
             if (rawPostId == null) {
+                System.out.println("[FAIL] 좋아요 실패: postId 누락됨");
                 return ResponseEntity.badRequest().body(Map.of("message", "게시글 ID(postId)가 누락되었습니다.", "success", false));
             }
 
@@ -89,7 +95,6 @@ public class BoardController {
                 postId = Integer.parseInt(str);
             }
 
-            // 3. DB 전송용 데이터 세팅 (table_num: 5, data: { postId })
             DataDto requestDto = new DataDto();
             requestDto.setContent("plt");
             requestDto.setTable_num("5");
@@ -100,15 +105,17 @@ public class BoardController {
 
             requestDto.setData(innerData);
 
-            // 4. DataService를 통해 DB 전송 (DB 서버가 받으면 +1 처리)
             boolean isSuccess = dataService.processData(requestDto);
 
             if (isSuccess) {
+                // 💡 [디버깅 Log] 좋아요 반영 성공
+                System.out.println("[SUCCESS] 좋아요 반영 성공! 유저: " + userId + " | 게시글 ID: " + postId);
                 return ResponseEntity.ok(Map.of(
                         "message", "좋아요가 성공적으로 반영되었습니다.",
                         "success", true
                 ));
             } else {
+                System.out.println("[FAIL] 좋아요 DB 반영 실패 (isSuccess=false) | 유저: " + userId + " | 게시글 ID: " + postId);
                 return ResponseEntity.badRequest().body(Map.of(
                         "message", "좋아요 반영에 실패했습니다.",
                         "success", false
@@ -116,33 +123,31 @@ public class BoardController {
             }
 
         } catch (Exception e) {
-            System.out.println("좋아요 처리 실패 : " + e.getMessage());
+            System.out.println("[ERROR] 좋아요 처리 예외 발생 : " + e.getMessage());
             return ResponseEntity.internalServerError().body(Map.of("message", "서버 오류"));
         }
     }
 
-
-    // 게시글 수정
     @PostMapping("/private/boards/update")
     public ResponseEntity<?> updateBoard(
             @RequestBody Map<String, Object> requestData,
             HttpServletRequest request) {
         try {
-            // 1. 로그인 유저 검증 (토큰에서 내 아이디 추출)
             String loginUserId = (String) request.getAttribute("userId");
             if (loginUserId == null) {
+                System.out.println("[FAIL] 게시글 수정 실패: 인증 정보 없음");
                 return ResponseEntity.status(401).body(Map.of(
                         "message", "로그인 정보가 없습니다.",
                         "success", false
                 ));
             }
 
-            // 2. 앱/웹에서 보낸 필수 데이터 추출 (postId, title, content)
             Object rawPostId = requestData.get("postId");
             String title = (String) requestData.get("title");
             String content = (String) requestData.get("content");
 
             if (rawPostId == null || title == null || content == null) {
+                System.out.println("[FAIL] 게시글 수정 실패: 필수 항목 누락 (postId=" + rawPostId + ", title=" + title + ")");
                 return ResponseEntity.badRequest().body(Map.of(
                         "message", "필수 데이터(postId, title, content)가 누락되었습니다.",
                         "success", false
@@ -156,7 +161,6 @@ public class BoardController {
             requestDto.setTable_num("6");
             requestDto.setTimestamp(System.currentTimeMillis());
 
-            // 내부 data 맵 조립
             Map<String, Object> innerData = new HashMap<>();
             innerData.put("userId", loginUserId);
             innerData.put("postId", postId);
@@ -164,15 +168,18 @@ public class BoardController {
             innerData.put("content", content);
 
             requestDto.setData(innerData);
-            
+
             boolean isSuccess = dataService.processData(requestDto);
 
             if (isSuccess) {
+                // 💡 [디버깅 Log] 게시글 수정 성공
+                System.out.println("[SUCCESS] 게시글 수정 성공! 작성자: " + loginUserId + " | 게시글 ID: " + postId + " | 수정 제목: " + title);
                 return ResponseEntity.ok(Map.of(
                         "message", "게시글이 성공적으로 수정되었습니다.",
                         "success", true
                 ));
             } else {
+                System.out.println("[FAIL] 게시글 수정 DB 반영 실패 | 작성자: " + loginUserId + " | 게시글 ID: " + postId);
                 return ResponseEntity.badRequest().body(Map.of(
                         "message", "게시글 수정에 실패했습니다.",
                         "success", false
@@ -180,34 +187,31 @@ public class BoardController {
             }
 
         } catch (Exception e) {
-            System.out.println("게시글 수정 실패 : " + e.getMessage());
+            System.out.println("[ERROR] 게시글 수정 예외 발생 : " + e.getMessage());
             return ResponseEntity.internalServerError().body(Map.of(
                     "message", "서버 오류가 발생했습니다."
             ));
         }
     }
 
-
-    // 게시글 삭제
-
     @PostMapping("/private/boards/delete")
     public ResponseEntity<?> deleteBoard(
             @RequestBody Map<String, Object> requestData,
             HttpServletRequest request) {
         try {
-            // 1. 로그인 유저 검증 (토큰에서 아이디 추출)
             String loginUserId = (String) request.getAttribute("userId");
             if (loginUserId == null) {
+                System.out.println("[FAIL] 게시글 삭제 실패: 인증 정보 없음");
                 return ResponseEntity.status(401).body(Map.of(
                         "message", "로그인 정보가 없습니다.",
                         "success", false
                 ));
             }
 
-            // 2. 웹에서 보낸 데이터 추출 (postId)
             Object rawPostId = requestData.get("postId");
 
             if (rawPostId == null) {
+                System.out.println("[FAIL] 게시글 삭제 실패: postId 누락됨");
                 return ResponseEntity.badRequest().body(Map.of(
                         "message", "필수 데이터(postId)가 누락되었습니다.",
                         "success", false
@@ -226,15 +230,18 @@ public class BoardController {
             innerData.put("postId", postId);
 
             requestDto.setData(innerData);
-            
+
             boolean isSuccess = dataService.processData(requestDto);
 
             if (isSuccess) {
+                // 💡 [디버깅 Log] 게시글 삭제 성공
+                System.out.println("[SUCCESS] 게시글 삭제 성공! 요청 유저: " + loginUserId + " | 삭제된 게시글 ID: " + postId);
                 return ResponseEntity.ok(Map.of(
                         "message", "게시글이 성공적으로 삭제되었습니다.",
                         "success", true
                 ));
             } else {
+                System.out.println("[FAIL] 게시글 삭제 DB 반영 실패 | 요청 유저: " + loginUserId + " | 게시글 ID: " + postId);
                 return ResponseEntity.badRequest().body(Map.of(
                         "message", "게시글 삭제에 실패했습니다.",
                         "success", false
@@ -242,7 +249,7 @@ public class BoardController {
             }
 
         } catch (Exception e) {
-            System.out.println("게시글 삭제 실패 : " + e.getMessage());
+            System.out.println("[ERROR] 게시글 삭제 예외 발생 : " + e.getMessage());
             return ResponseEntity.internalServerError().body(Map.of(
                     "message", "서버 오류가 발생했습니다."
             ));
