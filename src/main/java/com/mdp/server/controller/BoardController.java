@@ -5,6 +5,7 @@ import com.mdp.server.service.DataService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.mdp.server.client.DbServerClient;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -14,25 +15,30 @@ import java.util.Map;
 public class BoardController {
 
     private final DataService dataService;
+    private final DbServerClient dbServerClient;
 
-    public BoardController(DataService dataService) {
+    public BoardController(DataService dataService, DbServerClient dbServerClient) {
         this.dataService = dataService;
+        this.dbServerClient = dbServerClient;
     }
 
     @GetMapping("/public/boards")
     public ResponseEntity<?> getBoards() {
         try {
-            DataDto responseDto = dataService.fetchData("plt", "1");
+            // 💡 /data/all 엔드포인트를 호출하여 배열(List) 데이터 수신
+            DataDto responseDto = dbServerClient.fetchAllData("plt", "1");
 
-            // 💡 [디버깅 Log] 목록 조회 성공
-            System.out.println("[SUCCESS] 게시판 목록 조회 성공! 수신된 데이터: " + responseDto.getData());
+            // 💡 [디버깅 Log] 데이터 수신 확인 (배열 형태로 출력됨)
+            System.out.println("[SUCCESS] 게시판 전체 목록 조회 성공! 데이터 개수: "
+                    + (responseDto.getData() instanceof java.util.List<?> list ? list.size() : "N/A"));
+            System.out.println("[SUCCESS] 수신된 전체 목록: " + responseDto.getData());
 
             return ResponseEntity.ok(Map.of(
                     "message", "게시판 목록 조회 성공",
-                    "data", responseDto.getData()
+                    "data", responseDto.getData() // [ {...}, {...} ] 배열 전달
             ));
         } catch (Exception e) {
-            System.out.println("[ERROR] 게시판 조회 실패 : " + e.getMessage());
+            System.out.println("[ERROR] 게시판 전체 조회 실패 : " + e.getMessage());
             return ResponseEntity.internalServerError().body(Map.of("message", "조회 오류"));
         }
     }

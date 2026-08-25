@@ -50,6 +50,22 @@ public class DbServerClient {
         }
     }
 
+    // DataService.java (또는 DbServerClient.java) 내에 추가/수정
+
+    public DataDto fetchAllData(String content, String tableNum) {
+        try {
+            // GET http://192.168.0.21:7000/data/all?content=plt&table_num=1
+            String url = String.format("http://192.168.0.21:7000/data/all?content=%s&table_num=%s", content, tableNum);
+
+            // Jackson이 JSON 배열([ {...}, {...} ])을 List 형태로 DataDto.data(Object 타입)에 자동 파싱해줍니다.
+            DataDto response = restTemplate.getForObject(url, DataDto.class);
+            return response;
+        } catch (Exception e) {
+            System.err.println("[ERROR] DB 서버 전체 조회 실패: " + e.getMessage());
+            throw e;
+        }
+    }
+
     public List<String> getGuardianIds(String wardId) {
         List<String> guardianIds = new ArrayList<>();
 
