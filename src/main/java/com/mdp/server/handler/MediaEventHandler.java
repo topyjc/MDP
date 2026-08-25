@@ -76,6 +76,9 @@ public class MediaEventHandler {
 
             boolean isDangerDetected = false;
 
+            // 도로팀(road) 번호판 인식(license_plate) 여부 확인
+            boolean isRoadLicensePlate = "road".equals(teamId) && analysisType.contains("license_plate");
+
             // 2. 확률 기반 분기 처리
             if (confidence >= 0.9) {
                 System.out.println("[ALERT] 고확률 상황 (" + confidence + ") 즉시 상황 전개");
@@ -83,33 +86,45 @@ public class MediaEventHandler {
                 isDangerDetected = true;
 
             } else if (confidence >= 0.5) {
-                System.out.println("[ANALYSIS] 모호한 확률 (" + confidence + ") -> AI 서버 재검증 요청");
-                String aiResult = aiServerClient.requestInference(teamId, analysisType, fullImageUrl, System.currentTimeMillis());
-
-                if (aiResult != null && aiResult.contains("detected=true")) {
-                    System.out.println("[ALERT] AI가 위험 상황 최종 확정함");
-                    sendAlertToApp(teamId, analysisType, fullImageUrl, "AI 분석 결과, 위험 상황 확정");
+                // 💡 [수정된 로직] 도로팀 번호판 인식이면 2차 AI 검증을 건너뛰고 바로 감지 처리
+                if (isRoadLicensePlate) {
+                    System.out.println("[SKIP] 도로팀 번호판 인식 (" + confidence + ") -> 2차 AI 재검증 생략 및 즉시 처리");
                     isDangerDetected = true;
+                } else {
+                    System.out.println("[ANALYSIS] 모호한 확률 (" + confidence + ") -> AI 서버 재검증 요청");
+                    String aiResult = aiServerClient.requestInference(teamId, analysisType, fullImageUrl, System.currentTimeMillis());
+
+                    if (aiResult != null && aiResult.contains("detected=true")) {
+                        System.out.println("[ALERT] AI가 위험 상황 최종 확정함");
+                        sendAlertToApp(teamId, analysisType, fullImageUrl, "AI 분석 결과, 위험 상황 확정");
+                        isDangerDetected = true;
+                    } else {
+                        System.out.println("[SAFE] AI 검증 결과: 정상(오탐)으로 판단됨");
+                    }
                 }
+            } else {
+                System.out.println("[INFO] 무시할만한 낮은 확률 (" + confidence + ") 처리 생략");
             }
 
             // 3. 제어 및 추가 연동
             if (isDangerDetected) {
+                // [응급] emergency 포함 시 신호등 제어
                 if (analysisType.contains("emergency")) {
                     controlService.sendTrafficLightCommand();
                 }
 
-                if (analysisType.contains("fire")) {
+                // 💡 [수정] 스마트홈(house) 팀의 화재 시에만 LED 경보등 제어
+                if ("house".equals(teamId) && analysisType.contains("fire")) {
                     controlService.sendFireAlertLeds();
                 }
 
-                // 시골팀(cty) 화재 감지 시 MqttService를 통해 기기로 이벤트 전송
+                // [시골팀] 화재 감지 시 기기로 이벤트(위치 요청) 전송
                 if ("cty".equals(teamId) && analysisType.contains("fire")) {
                     sendFireEventToDevice(teamId, deviceName);
                 }
 
-                // 💡 [새로 추가된 로직] 가로등팀(streetlight) + 사람 감지(person) 시 앱 알림 전송
-                if ("streetlight".equals(teamId) && analysisType.contains("person")) {
+                // [가로등팀] 사람 감지 시 앱으로 알림 데이터 전송
+                if ("streetlight".equals(teamId) && analysisType.contains("fall")) {
                     sendStreetlightAlert(fullImageUrl);
                 }
             }
@@ -139,18 +154,18 @@ public class MediaEventHandler {
         }
     }
 
-    // 💡 가로등팀(streetlight) 보행자 감지 시 앱으로 알림 데이터 전송
+    // 💡 가로등팀(streetlight) 쓰러진 사람 감지 시 앱으로 알림 데이터 전송
     private void sendStreetlightAlert(String imageUrl) {
         Map<String, Object> alertMap = new HashMap<>();
         alertMap.put("type", "STREETLIGHT_PERSON");
         alertMap.put("teamId", "streetlight");
         alertMap.put("imageUrl", imageUrl);
-        alertMap.put("message", "가로등 인근 보행자 감지");
+        alertMap.put("message", "가로등 인근 쓰러진 사람 감지");
         alertMap.put("timestamp", System.currentTimeMillis());
 
         // WebSocketHandler를 통해 연결된 모든 앱으로 JSON 포맷 브로드캐스트
         webSocketHandler.broadcast(alertMap);
-        System.out.println("[INFO] 가로등 보행자 감지 알림을 앱으로 전송했습니다.");
+        System.out.println("[INFO] 가로등팀의 사람 쓰러짐 감지 알림을 앱으로 전송했습니다.");
     }
 
     private void sendAlertToApp(String teamId, String type, String url, String message) {
