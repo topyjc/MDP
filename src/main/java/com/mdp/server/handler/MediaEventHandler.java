@@ -107,6 +107,11 @@ public class MediaEventHandler {
                 if ("cty".equals(teamId) && analysisType.contains("fire")) {
                     sendFireEventToDevice(teamId, deviceName);
                 }
+
+                // 💡 [새로 추가된 로직] 가로등팀(streetlight) + 사람 감지(person) 시 앱 알림 전송
+                if ("streetlight".equals(teamId) && analysisType.contains("person")) {
+                    sendStreetlightAlert(fullImageUrl);
+                }
             }
 
         } catch (Exception e) {
@@ -132,6 +137,20 @@ public class MediaEventHandler {
         } catch (Exception e) {
             System.err.println("[ERROR] MqttService 발행 실패: " + e.getMessage());
         }
+    }
+
+    // 💡 가로등팀(streetlight) 보행자 감지 시 앱으로 알림 데이터 전송
+    private void sendStreetlightAlert(String imageUrl) {
+        Map<String, Object> alertMap = new HashMap<>();
+        alertMap.put("type", "STREETLIGHT_PERSON");
+        alertMap.put("teamId", "streetlight");
+        alertMap.put("imageUrl", imageUrl);
+        alertMap.put("message", "가로등 인근 보행자 감지");
+        alertMap.put("timestamp", System.currentTimeMillis());
+
+        // WebSocketHandler를 통해 연결된 모든 앱으로 JSON 포맷 브로드캐스트
+        webSocketHandler.broadcast(alertMap);
+        System.out.println("[INFO] 가로등 보행자 감지 알림을 앱으로 전송했습니다.");
     }
 
     private void sendAlertToApp(String teamId, String type, String url, String message) {
