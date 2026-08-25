@@ -59,17 +59,17 @@ public class WardEventHandler {
             // 4. DB 서버에서 보호자 ID 리스트 조회
             List<String> guardianIds = dbServerClient.getGuardianIds(wardId);
 
-            // 5. 보호자가 1명 이상 존재하면 등록된 모든 보호자에게 1:1 알림 전송
-            if (guardianIds != null && !guardianIds.isEmpty()) {
-                System.out.println("[ALERT] 피보호자(" + wardId + ") 위험 감지 -> 보호자 목록(" + guardianIds + ")에게 알림 전송");
+                // 5. 보호자가 1명 이상 존재하면 등록된 모든 보호자에게 1:1 알림 전송
+                if (guardianIds != null && !guardianIds.isEmpty()) {
+                    System.out.println("[ALERT] 피보호자(" + wardId + ") 위험 감지 -> 보호자 목록(" + guardianIds + ")에게 알림 전송");
 
-                Map<String, Object> alert = new HashMap<>();
-                alert.put("type", "WARD_EMERGENCY");
-                alert.put("wardId", wardId);
-                alert.put("eventTitle", eventTitle);
-                alert.put("location", location);
-                alert.put("message", "피보호자(" + wardId + ")님에게 [" + eventTitle + "]가 발생했습니다. (위치: " + location + ")");
-                alert.put("timestamp", System.currentTimeMillis());
+                    Map<String, Object> alert = new HashMap<>();
+                    alert.put("type", "WARD_EMERGENCY");
+                    alert.put("wardId", wardId);
+                    alert.put("eventTitle", eventTitle);
+                    alert.put("location", location);
+                    alert.put("message", "피보호자(" + wardId + ")님에게 [" + eventTitle + "]가 발생했습니다. (위치: " + location + ")");
+                    alert.put("timestamp", System.currentTimeMillis());
 
                 // 💡 [핵심] 모든 보호자에게 각각 웹소켓 알림 전송
                 for (String guardianId : guardianIds) {

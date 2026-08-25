@@ -2,12 +2,12 @@ package com.mdp.server.dto;
 
 import java.util.Map;
 
-public class DataDto {
+    public class DataDto {
 
-    private String content;
-    private String table_num;
-    private Long timestamp;
-    private Map<String, Object> data;
+        private String content;
+        private String table_num;
+        private Long timestamp;
+        private Map<String, Object> data;
 
     public String getContent() {
         return content;

@@ -86,34 +86,32 @@ public class MqttService implements MqttCallback {
     public void messageArrived(String topic, MqttMessage message) throws Exception {
         byte[] payload = message.getPayload();
 
+        // 1. 미디어(이미지) 데이터 처리
         if (topic.contains("media")) {
             mediaEventHandler.handle(topic, payload);
+            return;
+        }
 
-        } else if (topic.contains("cty") || topic.contains("streetlight")) {
-            JsonNode jsonNode = objectMapper.readTree(payload);
-            String tableNum = jsonNode.path("table_num").asText("");
+        // 2. [공통] 모든 일반 센서 데이터는 DB 저장을 위해 기본적으로 sensorEventHandler로 전달
+        sensorEventHandler.handle(topic, payload);
 
-            // 1. 시골팀(cty) 이면서 테이블 번호가 "2" 또는 "3" 인가?
-            boolean isCtyEmergency = topic.contains("cty") && (tableNum.equals("2") || tableNum.equals("3"));
+        // 3. [비상 조건 검사] cty(2,3번) 또는 streetlight(0번)인 경우 추가로 비상 알림 발송
+        if (topic.contains("cty") || topic.contains("streetlight")) {
+            try {
+                JsonNode jsonNode = objectMapper.readTree(payload);
+                String tableNum = jsonNode.path("table_num").asText("");
 
-            // 2. 가로등팀(streetlight) 이면서 테이블 번호가 "0" 인가?
-            boolean isStreetlightEmergency = topic.contains("streetlight") && tableNum.equals("0");
-            // ------------------------------------------
+                boolean isCtyEmergency = topic.contains("cty") && (tableNum.equals("2") || tableNum.equals("3"));
+                boolean isStreetlightEmergency = topic.contains("streetlight") && tableNum.equals("0");
 
-            System.out.println(isCtyEmergency);
-
-            if (isCtyEmergency || isStreetlightEmergency) {
-                String payloadStr = new String(payload);
-                wardEventHandler.processEmergency(payloadStr);
-            } else {
-                // 조건에 안 맞으면(일반 데이터면) 기존 센서 핸들러로 전달
-                sensorEventHandler.handle(topic, payload);
+                if (isCtyEmergency || isStreetlightEmergency) {
+                    System.out.println("[EMERGENCY DETECTED] DB 저장 완료 후 긴급 알림(wardEventHandler)을 호출합니다.");
+                    String payloadStr = new String(payload);
+                    wardEventHandler.processEmergency(payloadStr);
+                }
+            } catch (Exception e) {
+                System.err.println("[ERROR] 비상 데이터 파싱 실패: " + e.getMessage());
             }
-
-        } else {
-            // 3. 그 외 아예 다른 토픽인 경우 (일반 센서 부서)
-            System.out.println("일반 센서");
-            sensorEventHandler.handle(topic, payload);
         }
     }
 
