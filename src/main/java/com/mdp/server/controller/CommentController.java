@@ -72,14 +72,17 @@ public class CommentController {
 
             List<?> commentList = new ArrayList<>();
 
-            // 5. 수신한 JSON String 파싱 후 "comments" 리스트 추출
+            // 5. 수신한 JSON String 파싱 후 "data.comments" 리스트 추출
             if (jsonResponse != null && !jsonResponse.isBlank()) {
                 Map<String, Object> responseMap = objectMapper.readValue(
                         jsonResponse,
                         new TypeReference<Map<String, Object>>() {}
                 );
 
-                if (responseMap.get("comments") instanceof List<?> list) {
+                // 💡 innerData -> dataMap 으로 변수명 변경 (중복 충돌 해결)
+                if (responseMap.get("data") instanceof Map<?, ?> dataMap && dataMap.get("comments") instanceof List<?> list) {
+                    commentList = list;
+                } else if (responseMap.get("comments") instanceof List<?> list) {
                     commentList = list;
                 }
             }

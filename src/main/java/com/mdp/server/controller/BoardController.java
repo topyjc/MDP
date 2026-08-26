@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import com.mdp.server.client.DbServerClient;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -25,17 +26,24 @@ public class BoardController {
     @GetMapping("/public/boards")
     public ResponseEntity<?> getBoards() {
         try {
-            // 💡 /data/all 엔드포인트를 호출하여 배열(List) 데이터 수신
             DataDto responseDto = dbServerClient.fetchAllData("plt", "1");
 
-            // 💡 [디버깅 Log] 데이터 수신 확인 (배열 형태로 출력됨)
-            System.out.println("[SUCCESS] 게시판 전체 목록 조회 성공! 데이터 개수: "
-                    + (responseDto.getData() instanceof java.util.List<?> list ? list.size() : "N/A"));
-            System.out.println("[SUCCESS] 수신된 전체 목록: " + responseDto.getData());
+            Object rawData = responseDto.getData();
+            Object finalData = rawData;
+
+            // 💡 DB 서버가 { list: [...] } 형태로 넘겨줄 경우 내부 배열만 추출
+            if (rawData instanceof Map<?, ?> map && map.get("list") instanceof List<?> list) {
+                finalData = list;
+            }
+
+            int itemCount = (finalData instanceof List<?> list) ? list.size() : 0;
+
+            System.out.println("[SUCCESS] 게시판 전체 목록 조회 성공! 데이터 개수: " + itemCount);
+            System.out.println("[SUCCESS] 수신된 전체 목록: " + finalData);
 
             return ResponseEntity.ok(Map.of(
                     "message", "게시판 목록 조회 성공",
-                    "data", responseDto.getData() // [ {...}, {...} ] 배열 전달
+                    "data", finalData // 프론트엔드에는 순수 [ {...}, {...} ] 배열 전달
             ));
         } catch (Exception e) {
             System.out.println("[ERROR] 게시판 전체 조회 실패 : " + e.getMessage());
