@@ -68,6 +68,8 @@ public class CommentController {
             // 4. 💡 sendData(DataDto) 메서드 호출하여 JSON String 수신
             String jsonResponse = dbServerClient.sendData(requestDto);
 
+            System.out.println(jsonResponse);
+
             List<?> commentList = new ArrayList<>();
 
             // 5. 수신한 JSON String 파싱 후 "comments" 리스트 추출
