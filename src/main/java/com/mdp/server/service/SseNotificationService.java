@@ -32,6 +32,7 @@ public class SseNotificationService {
         emitter.onTimeout(() -> {
             System.out.println("[Web SSE] 타임아웃 발생: " + userId);
             emitters.remove(userId);
+            emitter.complete(); // 💡 명시적 complete() 호출로 경고 로그 방지
         });
         emitter.onError((e) -> {
             System.out.println("[Web SSE] 에러 발생: " + userId);

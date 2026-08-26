@@ -4,8 +4,7 @@ import com.mdp.server.dto.DataDto;
 import com.mdp.server.service.DataService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
+import com.mdp.server.client.DbServerClient;
 
 @RestController
 @RequestMapping("/api/data")
@@ -13,9 +12,11 @@ import java.util.List;
 public class DataController {
 
     private final DataService dataService;
+    private final DbServerClient dbServerClient;
 
-    public DataController(DataService dataService) {
+    public DataController(DataService dataService, DbServerClient dbServerClient) {
         this.dataService = dataService;
+        this.dbServerClient = dbServerClient;
     }
 
     @GetMapping("/{content}/{tableNum}")
@@ -23,9 +24,15 @@ public class DataController {
             @PathVariable String content,
             @PathVariable String tableNum) {
 
-//        System.out.println("[API request connect] group: " + content + ", type: " + tableNum);
+        DataDto result;
 
-        DataDto result = dataService.fetchData(content, tableNum);
+        // 💡 도로팀(road) 신호등(3번) 데이터인 경우 배열 전체 조회(fetchAllData) 사용
+        if ("road".equals(content) && "3".equals(tableNum)) {
+            result = dbServerClient.fetchAllData(content, tableNum);
+        } else {
+            // 그 외 일반 센서 단건 조회
+            result = dataService.fetchData(content, tableNum);
+        }
 
         if (result == null) {
             return ResponseEntity.noContent().build();
