@@ -95,22 +95,21 @@ public class MqttService implements MqttCallback {
         // 2. [공통] 모든 일반 센서 데이터는 DB 저장을 위해 기본적으로 sensorEventHandler로 전달
         sensorEventHandler.handle(topic, payload);
 
-        // 3. [비상 조건 검사] cty(2,3번) 또는 streetlight(0번)인 경우 추가로 비상 알림 발송
-        if (topic.contains("cty") || topic.contains("streetlight")) {
+        // 3. [비상 조건 검사] cty(2,3번)경우 추가로 비상 알림 발송
+        if (topic.contains("cty")) {
             try {
                 JsonNode jsonNode = objectMapper.readTree(payload);
                 String tableNum = jsonNode.path("table_num").asText("");
 
                 boolean isCtyEmergency = topic.contains("cty") && (tableNum.equals("2") || tableNum.equals("3"));
-                boolean isStreetlightEmergency = topic.contains("streetlight") && tableNum.equals("0");
 
-                if (isCtyEmergency || isStreetlightEmergency) {
-                    System.out.println("[EMERGENCY DETECTED] DB 저장 완료 후 긴급 알림(wardEventHandler)을 호출합니다.");
+                if (isCtyEmergency) {
+                    System.out.println("[EMERGENCY DETECTED] DB 저장 완료 후 긴급 보호자 알림(wardEventHandler)을 호출합니다.");
                     String payloadStr = new String(payload);
                     wardEventHandler.processEmergency(payloadStr);
                 }
             } catch (Exception e) {
-                System.err.println("[ERROR] 비상 데이터 파싱 실패: " + e.getMessage());
+                System.err.println("[ERROR] 비상 보호자 데이터 파싱 실패: " + e.getMessage());
             }
         }
     }

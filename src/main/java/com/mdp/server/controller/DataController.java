@@ -18,7 +18,7 @@ public class DataController {
         this.dataService = dataService;
         this.dbServerClient = dbServerClient;
     }
-
+    // DataController.java
     @GetMapping("/{content}/{tableNum}")
     public ResponseEntity<DataDto> getTargetData(
             @PathVariable String content,
@@ -26,11 +26,11 @@ public class DataController {
 
         DataDto result;
 
-        // 💡 도로팀(road) 신호등(3번) 데이터인 경우 배열 전체 조회(fetchAllData) 사용
-        if ("road".equals(content) && "3".equals(tableNum)) {
+        // 💡 신호등(road/3) 및 가로등(streetlight/0) 데이터를 배열(List) 전체 조회 처리
+        if (("road".equals(content) && "3".equals(tableNum)) ||
+                ("streetlight".equals(content) && "0".equals(tableNum))) {
             result = dbServerClient.fetchAllData(content, tableNum);
         } else {
-            // 그 외 일반 센서 단건 조회
             result = dataService.fetchData(content, tableNum);
         }
 

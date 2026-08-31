@@ -6,6 +6,7 @@ import com.mdp.server.client.AiServerClient;
 import com.mdp.server.client.MediaServerClient;
 import com.mdp.server.service.DeviceControlService;
 import com.mdp.server.mqtt.MqttService; // 💡 MqttService 임포트
+import com.mdp.server.service.WebNotificationService;
 import org.springframework.context.annotation.Lazy;
 import com.mdp.server.websocket.WebSocketHandler;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -21,15 +22,18 @@ public class MediaEventHandler {
     private final MediaServerClient mediaServerClient;
     private final AiServerClient aiServerClient;
     private final DeviceControlService controlService;
-    private final  MqttService mqttService; // 💡 1. MqttService 필드 추가
+    private final MqttService mqttService; // 💡 1. MqttService 필드 추가
     private final WebSocketHandler webSocketHandler;
+    private final WebNotificationService webNotificationService;
     private final ObjectMapper objectMapper;
     private final Executor mqttEventExecutor;
+
 
     public MediaEventHandler(
             MediaServerClient mediaServerClient,
             AiServerClient aiServerClient,
             DeviceControlService controlService,
+            WebNotificationService webNotificationService,
             @Lazy MqttService mqttService, // 💡 2. 생성자 주입 추가
             WebSocketHandler webSocketHandler,
             ObjectMapper objectMapper,
@@ -42,6 +46,7 @@ public class MediaEventHandler {
         this.webSocketHandler = webSocketHandler;
         this.objectMapper = objectMapper;
         this.mqttEventExecutor = mqttEventExecutor;
+        this.webNotificationService = webNotificationService;
     }
 
     public void handle(String topic, byte[] payload) {
@@ -166,6 +171,9 @@ public class MediaEventHandler {
         // WebSocketHandler를 통해 연결된 모든 앱으로 JSON 포맷 브로드캐스트
         webSocketHandler.broadcast(alertMap);
         System.out.println("[INFO] 가로등팀의 사람 쓰러짐 감지 알림을 앱으로 전송했습니다.");
+
+        webNotificationService.sendWebAlert(alertMap);
+
     }
 
     private void sendAlertToApp(String teamId, String type, String url, String message) {

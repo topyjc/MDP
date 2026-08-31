@@ -50,8 +50,6 @@ public class WardEventHandler {
             } else if ("3".equals(tableNum)) {
                 double powerUsage = dataNode.path("power_usage").asDouble(0.0);
                 eventTitle = "전력 사용량 이상 감지 (" + powerUsage + "kWh)";
-            } else if ("0".equals(tableNum)) {
-                eventTitle = "가로등 긴급 상황 감지";
             } else {
                 eventTitle = "피보호자 긴급 상황 발생";
             }
