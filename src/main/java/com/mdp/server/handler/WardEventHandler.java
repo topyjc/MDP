@@ -49,7 +49,7 @@ public class WardEventHandler {
                 eventTitle = "차량 전복 사고";
             } else if ("3".equals(tableNum)) {
                 double powerUsage = dataNode.path("power_usage").asDouble(0.0);
-                eventTitle = "전력 사용량 이상 감지 (" + powerUsage + "kWh)";
+                eventTitle = "전력 사용량 이상 감지 (" + powerUsage + "mA)";
             } else {
                 eventTitle = "피보호자 긴급 상황 발생";
             }
