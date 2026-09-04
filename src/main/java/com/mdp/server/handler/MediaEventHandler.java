@@ -113,9 +113,10 @@ public class MediaEventHandler {
 
             // 3. 제어 및 추가 연동
             if (isDangerDetected) {
-                // [응급] emergency 포함 시 신호등 제어
+                // [응급] emergency 포함 시 기기로 이벤트(위치 요청) 전송
                 if (analysisType.contains("emergency")) {
-                    controlService.sendTrafficLightCommand();
+                    sendDetectionEventToDevice(teamId, deviceName);
+//                    controlService.sendTrafficLightCommand(); // 이거는 이제 Sensor에서 호출해야함(위치 데이터를 전송하기 위해)
                 }
 
                 // 💡 [수정] 스마트홈(house) 팀의 화재 시에만 LED 경보등 제어
@@ -125,7 +126,7 @@ public class MediaEventHandler {
 
                 // [시골팀] 화재 감지 시 기기로 이벤트(위치 요청) 전송
                 if ("cty".equals(teamId) && analysisType.contains("fire")) {
-                    sendFireEventToDevice(teamId, deviceName);
+                    sendDetectionEventToDevice(teamId, deviceName);
                 }
 
                 // [가로등팀] 사람 감지 시 앱으로 알림 데이터 전송
@@ -140,8 +141,33 @@ public class MediaEventHandler {
         }
     }
 
-    // 💡 MqttService의 publish 메서드를 직접 사용하는 방식
-    private void sendFireEventToDevice(String teamId, String deviceName) {
+    // [시골팀 화재 & 도로팀 소방차] 감지 시 기기로 이벤트(위치 요청) 전송
+    private void sendDetectionEventToDevice(String teamId, String deviceName) {
+        String topic = String.format("mdp/control/%s/%s/event", teamId, deviceName);
+
+        // 1. Map 객체 생성
+        Map<String, String> payloadMap = new HashMap<>();
+
+        // 💡 2. teamId를 기준으로 시골팀 화재와 도로팀 소방차 액션 구분
+        if ("road".equals(teamId)) {
+            payloadMap.put("action", "fire_truck_detected"); // 도로팀 소방차 위치 요청 액션
+        } else {
+            payloadMap.put("action", "fire_detected"); // 기존 시골팀 화재 액션
+        }
+
+        payloadMap.put("value", "");
+
+        try {
+            // 3. Map 객체를 '그대로' MqttService에 전달
+            mqttService.publish(topic, payloadMap);
+
+            System.out.println("[INFO] 1차 AI 검증 기기로 MQTT 발행 완료. Topic: " + topic + " | Action: " + payloadMap.get("action"));
+        } catch (Exception e) {
+            System.err.println("[ERROR] 1차 AI 검증 기기로 위치 요청 실패: " + e.getMessage());
+        }
+    }
+
+    private void sendFiretruckEventToDevice(String teamId, String deviceName) {
         String topic = String.format("mdp/control/%s/%s/event", teamId, deviceName);
 
         // 1. Map 객체 생성

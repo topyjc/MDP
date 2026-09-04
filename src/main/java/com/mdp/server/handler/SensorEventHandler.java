@@ -42,8 +42,6 @@ public class SensorEventHandler {
 
     public void handle(String topic, byte[] payload) {
         // 수신 스레드가 블로킹되지 않도록 모든 작업을 전용 스레드풀로 위임
-        // (ForkJoinPool.commonPool 대신 mediaEventHandler와 동일한 bounded pool 공유:
-        //  블로킹 I/O를 commonPool에 태우지 않기 위함 + 리소스 상한 관리 일원화)
         mqttEventExecutor.execute(() -> {
             try {
                 String payloadText = new String(payload, StandardCharsets.UTF_8);
@@ -69,11 +67,26 @@ public class SensorEventHandler {
                     if (sensorData != null && sensorData.containsKey("gasSw")) {
                         Object gasSwVal = sensorData.get("gasSw");
 
-                        // 문자열로 비교
                         if (gasSwVal != null && "1".equals(String.valueOf(gasSwVal))) {
                             System.out.println("가스 누출 발생 (gasSw = 1)");
                             controlService.sendGasAlertLeds();
                         }
+                    }
+                }
+
+                // 4. 도로팀(road) 소방차 센서 데이터 감지 및 신호등 비상 제어
+                if ("road".equals(dataDto.getContent())) {
+                    Map<String, Object> sensorData = dataDto.getData();
+
+                    // 💡 전달받은 JSON 규격("vehicle_type": "Firetruck") 적용
+                    if (sensorData != null && "Firetruck".equals(sensorData.get("vehicle_type"))) {
+                        String location = (String) sensorData.getOrDefault("location", "위치 미상");
+                        String status = (String) sensorData.getOrDefault("status", "상태 미상");
+
+                        System.out.println("[INFO] 구역 [" + location + "] 소방차 수신 완료 (상태: " + status + "). 신호등 비상 제어 실행!");
+
+                        // 신호등 비상 알림 제어 전송
+                        controlService.sendTrafficLightCommand(location);
                     }
                 }
 
@@ -84,7 +97,6 @@ public class SensorEventHandler {
             }
         });
     }
-
     private DataDto mapToDataDto(String json) throws Exception {
         Map<String, Object> map = objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {});
         DataDto dto = new DataDto();

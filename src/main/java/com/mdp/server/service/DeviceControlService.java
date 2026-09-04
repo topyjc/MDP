@@ -19,13 +19,18 @@ public class DeviceControlService {
 
      // 도로팀: 긴급 차량 감지 시 신호등 제어
 
-    public void sendTrafficLightCommand() {
+    public void sendTrafficLightCommand(String location) {
         String topic = "mdp/control/road/esp8266-trafficLight/event";
-        Map<String, Object> payload = createBasePayload("traffic_light", "emergency", "");
-        mqttService.publish(topic, payload);
-    }
 
-    // 스마트홈팀 : LED 점멸
+        // 기본 제어 페이로드 생성
+        Map<String, Object> payload = createBasePayload("traffic_light", "emergency", "");
+
+        // 💡 전달받은 위치(location) 정보를 추가
+        payload.put("location", location);
+
+        mqttService.publish(topic, payload);
+        System.out.println("[INFO] 신호등 비상 제어 명령 전송 완료 (위치: " + location + ")");
+    }
 
     // 화재 감지 - LED1, LED2 각각 BLINK-FIRE 명령 발행
 
