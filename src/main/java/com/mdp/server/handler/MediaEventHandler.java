@@ -76,7 +76,8 @@ public class MediaEventHandler {
         try {
             // 1. 미디어 서버 파일 업로드
             String uploadResponseJson = mediaServerClient.uploadImage(teamId, fileName, payload);
-            Map<String, String> responseMap = objectMapper.readValue(uploadResponseJson, new TypeReference<Map<String, String>>() {});
+            Map<String, String> responseMap = objectMapper.readValue(uploadResponseJson, new TypeReference<Map<String, String>>() {
+            });
             String fullImageUrl = "http://192.168.0.20:8090" + responseMap.get("fileUrl");
 
             boolean isDangerDetected = false;
@@ -206,11 +207,22 @@ public class MediaEventHandler {
         if (!"house".equals(teamId)) {
             return;
         }
+
+        String alertType = type.contains("fire") ? "FIRE" : "INTRUSION";
+
         Map<String, Object> alert = new HashMap<>();
-        alert.put("type", type.contains("fire") ? "FIRE" : "INTRUSION");
+        alert.put("type", alertType);
         alert.put("imageUrl", url);
         alert.put("message", message);
         alert.put("timestamp", System.currentTimeMillis());
+
         webSocketHandler.broadcast(alert);
+        System.out.println("[INFO] 앱으로 스마트홈 이미지(화재 또는 침입)를 전송했습니다.");
+
+        // 웹(Web) 알림 전송 (INTRUSION인 경우에만 실행)
+        if ("INTRUSION".equals(alertType)) {
+            webNotificationService.sendWebAlert(alert);
+            System.out.println("[INFO] 침입 감지 알림을 웹(Web)으로 전송했습니다.");
+        }
     }
 }
