@@ -38,12 +38,6 @@ public class MqttService implements MqttCallback {
         this.mqttConfig = mqttConfig;
     }
 
-    @PostConstruct
-    public void init() {
-        connect();
-    }
-
-
     public synchronized void connect() {
         System.out.println("### MQTT CONNECT BEGIN ###");
         String brokerUrl = mqttConfig.getBrokerUrl();
