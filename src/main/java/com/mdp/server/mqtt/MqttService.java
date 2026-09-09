@@ -8,6 +8,7 @@ import com.mdp.server.handler.SensorEventHandler;
 import com.mdp.server.handler.WardEventHandler;
 import jakarta.annotation.PostConstruct;
 import org.eclipse.paho.client.mqttv3.*;
+import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
@@ -59,7 +60,11 @@ public class MqttService implements MqttCallback {
                     ? "mdp/#" : mqttConfig.getTopics().get(0);
             String resolvedClientId = baseClientId + "-" + UUID.randomUUID();
 
-            client = new MqttClient(brokerUrl, resolvedClientId);
+            client = new MqttClient(
+                    brokerUrl,
+                    resolvedClientId,
+                    new MemoryPersistence()
+            );
             client.setCallback(this);
 
             MqttConnectOptions options = new MqttConnectOptions();
