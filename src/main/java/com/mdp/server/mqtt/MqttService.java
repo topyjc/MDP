@@ -6,6 +6,7 @@ import com.mdp.server.config.Mqtt;
 import com.mdp.server.handler.MediaEventHandler;
 import com.mdp.server.handler.SensorEventHandler;
 import com.mdp.server.handler.WardEventHandler;
+import jakarta.annotation.PostConstruct;
 import org.eclipse.paho.client.mqttv3.*;
 import org.springframework.stereotype.Service;
 
@@ -35,6 +36,12 @@ public class MqttService implements MqttCallback {
         this.objectMapper = objectMapper;
         this.mqttConfig = mqttConfig;
     }
+
+    @PostConstruct
+    public void init() {
+        connect();
+    }
+
 
     public synchronized void connect() {
         System.out.println("### MQTT CONNECT BEGIN ###");
@@ -72,6 +79,7 @@ public class MqttService implements MqttCallback {
             client.subscribe(subscribeTopic, mqttConfig.getQos());
             System.out.println("[MQTT] 연결 성공 및 토픽 구독 완료: " + subscribeTopic);
         } catch (MqttException e) {
+            System.err.println("[MQTT 연결 실패] " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -117,14 +125,32 @@ public class MqttService implements MqttCallback {
     @Override
     public void deliveryComplete(IMqttDeliveryToken iMqttDeliveryToken) {}
 
-    public void publish(String topic, Object payload) {
+    public synchronized void publish(String topic, Object payload) {
         try {
+            if (client == null) {
+                System.err.println("[MQTT 발신 실패] MQTT client가 초기화되지 않았습니다.");
+                connect();
+            }
+
+            if (client == null || !client.isConnected()) {
+                System.err.println("[MQTT 발신 실패] MQTT broker에 연결되어 있지 않습니다.");
+                return;
+            }
+
             String jsonMessage = objectMapper.writeValueAsString(payload);
-            MqttMessage mqttMessage = new MqttMessage(jsonMessage.getBytes());
+
+            MqttMessage mqttMessage =
+                    new MqttMessage(jsonMessage.getBytes());
+
             mqttMessage.setQos(1);
 
             client.publish(topic, mqttMessage);
-            System.out.println("[MQTT 발신 성공] 토픽: " + topic + " | 메시지: " + jsonMessage);
+
+            System.out.println(
+                    "[MQTT 발신 성공] 토픽: " + topic +
+                            " | 메시지: " + jsonMessage
+            );
+
         } catch (Exception e) {
             System.err.println("[MQTT 발신 실패] 토픽: " + topic);
             e.printStackTrace();
